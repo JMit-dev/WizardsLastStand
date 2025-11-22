@@ -18,7 +18,9 @@ ATower::ATower()
 void ATower::BeginPlay()
 {
 	Super::BeginPlay();
-	
+
+	// Initialize HP
+	CurrentHP = MaxHP;
 }
 
 // Called every frame
@@ -26,5 +28,37 @@ void ATower::Tick(float DeltaTime)
 {
 	Super::Tick(DeltaTime);
 
+}
+
+float ATower::TakeDamage(float Damage, struct FDamageEvent const& DamageEvent, AController* EventInstigator, AActor* DamageCauser)
+{
+	if (bIsDestroyed)
+	{
+		return 0.0f;
+	}
+
+	CurrentHP -= Damage;
+
+	// Call blueprint event for damage feedback
+	BP_OnTowerDamaged(Damage, CurrentHP);
+
+	if (CurrentHP <= 0.0f)
+	{
+		DestroyTower();
+	}
+
+	return Damage;
+}
+
+void ATower::DestroyTower()
+{
+	bIsDestroyed = true;
+	CurrentHP = 0.0f;
+
+	// Broadcast destruction
+	OnTowerDestroyed.Broadcast();
+
+	// Call blueprint event
+	BP_OnTowerDestroyed();
 }
 
