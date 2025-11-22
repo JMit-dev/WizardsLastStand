@@ -1,6 +1,7 @@
 // Fill out your copyright notice in the Description page of Project Settings.
 
 #include "ZombieCharacter.h"
+#include "Tower.h"
 #include "Animation/AnimInstance.h"
 #include "Animation/AnimMontage.h"
 #include "GameFramework/CharacterMovementComponent.h"
@@ -8,6 +9,7 @@
 #include "Engine/World.h"
 #include "TimerManager.h"
 #include "Kismet/GameplayStatics.h"
+#include "EngineUtils.h"
 
 AZombieCharacter::AZombieCharacter()
 {
@@ -105,19 +107,48 @@ void AZombieCharacter::OnAttackMontageEnded(UAnimMontage* Montage, bool bInterru
 
 void AZombieCharacter::ApplyAttackDamage()
 {
-	// Find player in range
-	APawn* PlayerPawn = UGameplayStatics::GetPlayerPawn(this, 0);
-	if (!PlayerPawn)
+	// Get current AI target from controller
+	AController* AIController = GetController();
+	if (!AIController)
 	{
 		return;
 	}
 
-	// Check distance
-	float Distance = FVector::Dist(GetActorLocation(), PlayerPawn->GetActorLocation());
-	if (Distance <= AttackRange)
+	FVector ZombieLocation = GetActorLocation();
+	AActor* NearestTarget = nullptr;
+	float NearestDistance = FLT_MAX;
+
+	// Check player
+	APawn* PlayerPawn = UGameplayStatics::GetPlayerPawn(this, 0);
+	if (PlayerPawn)
 	{
-		// Apply damage
-		UGameplayStatics::ApplyDamage(PlayerPawn, AttackDamage, GetController(), this, nullptr);
+		float PlayerDistance = FVector::Dist(ZombieLocation, PlayerPawn->GetActorLocation());
+		if (PlayerDistance < NearestDistance && PlayerDistance <= AttackRange)
+		{
+			NearestDistance = PlayerDistance;
+			NearestTarget = PlayerPawn;
+		}
+	}
+
+	// Check all towers
+	for (TActorIterator<ATower> It(GetWorld()); It; ++It)
+	{
+		ATower* Tower = *It;
+		if (Tower && !Tower->IsDestroyed())
+		{
+			float TowerDistance = FVector::Dist(ZombieLocation, Tower->GetActorLocation());
+			if (TowerDistance < NearestDistance && TowerDistance <= AttackRange)
+			{
+				NearestDistance = TowerDistance;
+				NearestTarget = Tower;
+			}
+		}
+	}
+
+	// Apply damage to nearest target in range
+	if (NearestTarget)
+	{
+		UGameplayStatics::ApplyDamage(NearestTarget, AttackDamage, AIController, this, nullptr);
 	}
 }
 

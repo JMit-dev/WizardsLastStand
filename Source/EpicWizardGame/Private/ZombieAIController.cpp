@@ -2,10 +2,12 @@
 
 #include "ZombieAIController.h"
 #include "ZombieCharacter.h"
+#include "Tower.h"
 #include "Kismet/GameplayStatics.h"
 #include "Engine/World.h"
 #include "TimerManager.h"
 #include "Navigation/PathFollowingComponent.h"
+#include "EngineUtils.h"
 
 AZombieAIController::AZombieAIController()
 {
@@ -50,24 +52,51 @@ void AZombieAIController::UpdateAI()
 		return;
 	}
 
-	// Find player
+	FVector ZombieLocation = GetPawn()->GetActorLocation();
+	AActor* NearestTarget = nullptr;
+	float NearestDistance = FLT_MAX;
+
+	// Check player
 	APawn* PlayerPawn = UGameplayStatics::GetPlayerPawn(this, 0);
-	if (!PlayerPawn)
+	if (PlayerPawn)
+	{
+		float PlayerDistance = FVector::Dist(ZombieLocation, PlayerPawn->GetActorLocation());
+		if (PlayerDistance < NearestDistance)
+		{
+			NearestDistance = PlayerDistance;
+			NearestTarget = PlayerPawn;
+		}
+	}
+
+	// Check all towers
+	for (TActorIterator<ATower> It(GetWorld()); It; ++It)
+	{
+		ATower* Tower = *It;
+		if (Tower && !Tower->IsDestroyed())
+		{
+			float TowerDistance = FVector::Dist(ZombieLocation, Tower->GetActorLocation());
+			if (TowerDistance < NearestDistance)
+			{
+				NearestDistance = TowerDistance;
+				NearestTarget = Tower;
+			}
+		}
+	}
+
+	// If no valid target found, do nothing
+	if (!NearestTarget)
 	{
 		return;
 	}
 
-	// Get distance to player
-	float Distance = FVector::Dist(GetPawn()->GetActorLocation(), PlayerPawn->GetActorLocation());
-
 	// If in attack range, attack
-	if (Distance <= AttackDistance)
+	if (NearestDistance <= AttackDistance)
 	{
 		// Stop moving
 		StopMovement();
 
-		// Face the player
-		FVector Direction = PlayerPawn->GetActorLocation() - GetPawn()->GetActorLocation();
+		// Face the target
+		FVector Direction = NearestTarget->GetActorLocation() - ZombieLocation;
 		Direction.Z = 0.0f;
 		if (!Direction.IsNearlyZero())
 		{
@@ -82,8 +111,8 @@ void AZombieAIController::UpdateAI()
 	}
 	else
 	{
-		// Move towards player
-		MoveToActor(PlayerPawn, AcceptanceRadius);
+		// Move towards nearest target
+		MoveToActor(NearestTarget, AcceptanceRadius);
 	}
 }
 
