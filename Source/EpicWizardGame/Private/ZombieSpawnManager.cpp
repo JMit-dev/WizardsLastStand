@@ -4,6 +4,7 @@
 #include "ZombieSpawnManager.h"
 #include "ZombieSpawnGate.h"
 #include "ZombieCharacter.h"
+#include "WaveManager.h"
 #include "EngineUtils.h"
 #include "TimerManager.h"
 
@@ -22,8 +23,16 @@ void AZombieSpawnManager::BeginPlay()
 	// Find all spawn gates in the level
 	FindSpawnGates();
 
-	// Auto-start spawning if enabled
-	if (bAutoStartSpawning)
+	// Try to find wave manager
+	for (TActorIterator<AWaveManager> It(GetWorld()); It; ++It)
+	{
+		WaveManager = *It;
+		UE_LOG(LogTemp, Log, TEXT("ZombieSpawnManager: Found wave manager, will wait for it to control spawning"));
+		break;
+	}
+
+	// Auto-start spawning if enabled and no wave manager
+	if (bAutoStartSpawning && !WaveManager)
 	{
 		StartSpawning();
 	}
@@ -129,6 +138,12 @@ void AZombieSpawnManager::TrySpawnZombie()
 
 void AZombieSpawnManager::OnZombieDied()
 {
+	// Notify wave manager if it exists
+	if (WaveManager)
+	{
+		WaveManager->OnZombieDied();
+	}
+
 	// Clean up dead zombies
 	CleanupDeadZombies();
 }

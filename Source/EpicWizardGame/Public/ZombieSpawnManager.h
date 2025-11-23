@@ -8,17 +8,20 @@
 
 class AZombieSpawnGate;
 class AZombieCharacter;
+class AWaveManager;
 
 UCLASS()
 class EPICWIZARDGAME_API AZombieSpawnManager : public AActor
 {
 	GENERATED_BODY()
 
-protected:
+public:
 
 	/** Maximum total number of zombies allowed at once across all gates */
 	UPROPERTY(EditAnywhere, Category="Spawning")
 	int32 MaxTotalZombies = 20;
+
+protected:
 
 	/** Time between spawn attempts (seconds) */
 	UPROPERTY(EditAnywhere, Category="Spawning")
@@ -27,6 +30,10 @@ protected:
 	/** Auto-start spawning on begin play */
 	UPROPERTY(EditAnywhere, Category="Spawning")
 	bool bAutoStartSpawning = true;
+
+	/** Reference to wave manager (optional) */
+	UPROPERTY()
+	AWaveManager* WaveManager;
 
 	/** Array of all spawn gates in the level */
 	UPROPERTY()
