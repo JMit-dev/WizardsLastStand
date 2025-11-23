@@ -6,6 +6,8 @@
 #include "GameFramework/PlayerController.h"
 #include "WizardPlayerController.generated.h"
 
+class UHotbarWidget;
+
 /**
  * Player controller for the Wizard character
  */
@@ -18,7 +20,19 @@ public:
 
 	AWizardPlayerController();
 
+	/** Set reference to the hotbar widget */
+	UFUNCTION(BlueprintCallable, Category="UI")
+	void SetHotbarWidget(UHotbarWidget* Widget);
+
+	/** Get reference to the hotbar widget */
+	UFUNCTION(BlueprintPure, Category="UI")
+	UHotbarWidget* GetHotbarWidget() const { return HotbarWidget; }
+
 protected:
 
 	virtual void BeginPlay() override;
+
+	/** Reference to the hotbar widget */
+	UPROPERTY()
+	UHotbarWidget* HotbarWidget;
 };

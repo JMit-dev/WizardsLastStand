@@ -50,6 +50,30 @@ protected:
 	UPROPERTY(EditAnywhere, Category="Input")
 	UInputAction* CastSpellAction;
 
+	/** Hotbar scroll input action (mouse wheel) */
+	UPROPERTY(EditAnywhere, Category="Input|Hotbar")
+	UInputAction* HotbarScrollAction;
+
+	/** Hotbar slot 1 input action */
+	UPROPERTY(EditAnywhere, Category="Input|Hotbar")
+	UInputAction* HotbarSlot1Action;
+
+	/** Hotbar slot 2 input action */
+	UPROPERTY(EditAnywhere, Category="Input|Hotbar")
+	UInputAction* HotbarSlot2Action;
+
+	/** Hotbar slot 3 input action */
+	UPROPERTY(EditAnywhere, Category="Input|Hotbar")
+	UInputAction* HotbarSlot3Action;
+
+	/** Hotbar slot 4 input action */
+	UPROPERTY(EditAnywhere, Category="Input|Hotbar")
+	UInputAction* HotbarSlot4Action;
+
+	/** Hotbar slot 5 input action */
+	UPROPERTY(EditAnywhere, Category="Input|Hotbar")
+	UInputAction* HotbarSlot5Action;
+
 	/** Socket name on the mesh for staff attachment */
 	UPROPERTY(EditAnywhere, Category="Staff")
 	FName StaffSocketName = FName("hand_r");
@@ -107,6 +131,16 @@ protected:
 
 	/** Look input handler */
 	void LookInput(const struct FInputActionValue& Value);
+
+	/** Hotbar scroll input handler */
+	void HotbarScrollInput(const struct FInputActionValue& Value);
+
+	/** Hotbar slot selection handlers */
+	void SelectHotbarSlot1();
+	void SelectHotbarSlot2();
+	void SelectHotbarSlot3();
+	void SelectHotbarSlot4();
+	void SelectHotbarSlot5();
 
 	/** Called when cast montage ends */
 	UFUNCTION()

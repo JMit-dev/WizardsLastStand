@@ -11,6 +11,8 @@
 #include "Animation/AnimInstance.h"
 #include "Animation/AnimMontage.h"
 #include "GameFramework/CharacterMovementComponent.h"
+#include "WizardPlayerController.h"
+#include "HotbarWidget.h"
 
 AWizardCharacter::AWizardCharacter()
 {
@@ -93,6 +95,34 @@ void AWizardCharacter::SetupPlayerInputComponent(UInputComponent* PlayerInputCom
 		if (CastSpellAction)
 		{
 			EnhancedInputComponent->BindAction(CastSpellAction, ETriggerEvent::Started, this, &AWizardCharacter::DoCastSpell);
+		}
+
+		// Hotbar scroll (mouse wheel)
+		if (HotbarScrollAction)
+		{
+			EnhancedInputComponent->BindAction(HotbarScrollAction, ETriggerEvent::Triggered, this, &AWizardCharacter::HotbarScrollInput);
+		}
+
+		// Hotbar slot selections (number keys)
+		if (HotbarSlot1Action)
+		{
+			EnhancedInputComponent->BindAction(HotbarSlot1Action, ETriggerEvent::Started, this, &AWizardCharacter::SelectHotbarSlot1);
+		}
+		if (HotbarSlot2Action)
+		{
+			EnhancedInputComponent->BindAction(HotbarSlot2Action, ETriggerEvent::Started, this, &AWizardCharacter::SelectHotbarSlot2);
+		}
+		if (HotbarSlot3Action)
+		{
+			EnhancedInputComponent->BindAction(HotbarSlot3Action, ETriggerEvent::Started, this, &AWizardCharacter::SelectHotbarSlot3);
+		}
+		if (HotbarSlot4Action)
+		{
+			EnhancedInputComponent->BindAction(HotbarSlot4Action, ETriggerEvent::Started, this, &AWizardCharacter::SelectHotbarSlot4);
+		}
+		if (HotbarSlot5Action)
+		{
+			EnhancedInputComponent->BindAction(HotbarSlot5Action, ETriggerEvent::Started, this, &AWizardCharacter::SelectHotbarSlot5);
 		}
 	}
 }
@@ -206,5 +236,80 @@ void AWizardCharacter::Die()
 	DisableInput(nullptr);
 	GetCharacterMovement()->StopMovementImmediately();
 	BP_OnDeath();
+}
+
+void AWizardCharacter::HotbarScrollInput(const FInputActionValue& Value)
+{
+	float ScrollValue = Value.Get<float>();
+
+	if (AWizardPlayerController* PC = Cast<AWizardPlayerController>(GetController()))
+	{
+		if (UHotbarWidget* HotbarWidget = PC->GetHotbarWidget())
+		{
+			if (ScrollValue > 0.0f)
+			{
+				HotbarWidget->SelectPreviousSlot();
+			}
+			else if (ScrollValue < 0.0f)
+			{
+				HotbarWidget->SelectNextSlot();
+			}
+		}
+	}
+}
+
+void AWizardCharacter::SelectHotbarSlot1()
+{
+	if (AWizardPlayerController* PC = Cast<AWizardPlayerController>(GetController()))
+	{
+		if (UHotbarWidget* HotbarWidget = PC->GetHotbarWidget())
+		{
+			HotbarWidget->SelectSlotByNumber(1);
+		}
+	}
+}
+
+void AWizardCharacter::SelectHotbarSlot2()
+{
+	if (AWizardPlayerController* PC = Cast<AWizardPlayerController>(GetController()))
+	{
+		if (UHotbarWidget* HotbarWidget = PC->GetHotbarWidget())
+		{
+			HotbarWidget->SelectSlotByNumber(2);
+		}
+	}
+}
+
+void AWizardCharacter::SelectHotbarSlot3()
+{
+	if (AWizardPlayerController* PC = Cast<AWizardPlayerController>(GetController()))
+	{
+		if (UHotbarWidget* HotbarWidget = PC->GetHotbarWidget())
+		{
+			HotbarWidget->SelectSlotByNumber(3);
+		}
+	}
+}
+
+void AWizardCharacter::SelectHotbarSlot4()
+{
+	if (AWizardPlayerController* PC = Cast<AWizardPlayerController>(GetController()))
+	{
+		if (UHotbarWidget* HotbarWidget = PC->GetHotbarWidget())
+		{
+			HotbarWidget->SelectSlotByNumber(4);
+		}
+	}
+}
+
+void AWizardCharacter::SelectHotbarSlot5()
+{
+	if (AWizardPlayerController* PC = Cast<AWizardPlayerController>(GetController()))
+	{
+		if (UHotbarWidget* HotbarWidget = PC->GetHotbarWidget())
+		{
+			HotbarWidget->SelectSlotByNumber(5);
+		}
+	}
 }
 
