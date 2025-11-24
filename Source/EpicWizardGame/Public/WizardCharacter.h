@@ -124,6 +124,18 @@ public:
 	/** Returns the staff mesh */
 	UStaticMeshComponent* GetStaffMesh() const { return StaffMesh; }
 
+	/** Returns current HP percentage (0-1) */
+	UFUNCTION(BlueprintCallable, Category="Wizard")
+	float GetHealthPercent() const { return MaxHP > 0.0f ? CurrentHP / MaxHP : 0.0f; }
+
+	/** Returns current HP */
+	UFUNCTION(BlueprintCallable, Category="Wizard")
+	float GetCurrentHP() const { return CurrentHP; }
+
+	/** Returns max HP */
+	UFUNCTION(BlueprintCallable, Category="Wizard")
+	float GetMaxHP() const { return MaxHP; }
+
 protected:
 
 	/** Movement input handler */
