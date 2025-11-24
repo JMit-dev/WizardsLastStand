@@ -1,7 +1,7 @@
 // Fill out your copyright notice in the Description page of Project Settings.
 
-
 #include "Tower.h"
+#include "Components/WidgetComponent.h"
 
 // Sets default values
 ATower::ATower()
@@ -12,6 +12,13 @@ ATower::ATower()
 	// Create and attach the mesh
 	TowerMesh = CreateDefaultSubobject<UStaticMeshComponent>(TEXT("TowerMesh"));
 	RootComponent = TowerMesh;
+
+	// Create floating health bar widget
+	HealthBarWidget = CreateDefaultSubobject<UWidgetComponent>(TEXT("HealthBarWidget"));
+	HealthBarWidget->SetupAttachment(RootComponent);
+	HealthBarWidget->SetRelativeLocation(FVector(0.0f, 0.0f, 300.0f)); // Above tower
+	HealthBarWidget->SetWidgetSpace(EWidgetSpace::Screen); // Always face camera
+	HealthBarWidget->SetDrawSize(FVector2D(300.0f, 30.0f));
 }
 
 // Called when the game starts or when spawned

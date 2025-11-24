@@ -7,6 +7,7 @@
 #include "ZombieCharacter.generated.h"
 
 class UAnimMontage;
+class UWidgetComponent;
 
 DECLARE_DYNAMIC_MULTICAST_DELEGATE(FZombieDeathDelegate);
 
@@ -16,6 +17,10 @@ class EPICWIZARDGAME_API AZombieCharacter : public ACharacter
 	GENERATED_BODY()
 
 protected:
+
+	/** Floating health bar widget */
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category="Components")
+	UWidgetComponent* HealthBarWidget;
 
 	/** Attack animation montage */
 	UPROPERTY(EditAnywhere, Category="Animations")

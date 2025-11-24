@@ -6,6 +6,8 @@
 #include "GameFramework/Actor.h"
 #include "Tower.generated.h"
 
+class UWidgetComponent;
+
 DECLARE_DYNAMIC_MULTICAST_DELEGATE(FTowerDestroyedDelegate);
 
 UCLASS()
@@ -14,6 +16,10 @@ class EPICWIZARDGAME_API ATower : public AActor
 	GENERATED_BODY()
 
 protected:
+
+	/** Floating health bar widget */
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category="Components")
+	UWidgetComponent* HealthBarWidget;
 
 	/** Max HP for the tower */
 	UPROPERTY(EditAnywhere, Category="Health")

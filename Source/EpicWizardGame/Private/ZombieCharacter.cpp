@@ -6,6 +6,7 @@
 #include "Animation/AnimMontage.h"
 #include "GameFramework/CharacterMovementComponent.h"
 #include "Components/CapsuleComponent.h"
+#include "Components/WidgetComponent.h"
 #include "Engine/World.h"
 #include "TimerManager.h"
 #include "Kismet/GameplayStatics.h"
@@ -17,6 +18,16 @@ AZombieCharacter::AZombieCharacter()
 
 	// AI controlled
 	AutoPossessAI = EAutoPossessAI::PlacedInWorldOrSpawned;
+
+	// Create floating health bar widget
+	HealthBarWidget = CreateDefaultSubobject<UWidgetComponent>(TEXT("HealthBarWidget"));
+	HealthBarWidget->SetupAttachment(RootComponent);
+	HealthBarWidget->SetRelativeLocation(FVector(0.0f, 0.0f, 100.0f)); // Above head
+	HealthBarWidget->SetWidgetSpace(EWidgetSpace::Screen); // Always face camera
+	HealthBarWidget->SetDrawSize(FVector2D(200.0f, 20.0f));
+
+	// Make zombies slower
+	GetCharacterMovement()->MaxWalkSpeed = 200.0f; // Default is usually 600
 }
 
 void AZombieCharacter::BeginPlay()
