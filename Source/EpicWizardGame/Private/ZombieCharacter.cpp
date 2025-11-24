@@ -141,14 +141,14 @@ void AZombieCharacter::ApplyAttackDamage()
 		}
 	}
 
-	// Check all towers
+	// Check all towers (use TowerAttackRange for towers, which can be larger)
 	for (TActorIterator<ATower> It(GetWorld()); It; ++It)
 	{
 		ATower* Tower = *It;
 		if (Tower && !Tower->IsDestroyed())
 		{
 			float TowerDistance = FVector::Dist(ZombieLocation, Tower->GetActorLocation());
-			if (TowerDistance < NearestDistance && TowerDistance <= AttackRange)
+			if (TowerDistance < NearestDistance && TowerDistance <= TowerAttackRange)
 			{
 				NearestDistance = TowerDistance;
 				NearestTarget = Tower;
@@ -159,7 +159,23 @@ void AZombieCharacter::ApplyAttackDamage()
 	// Apply damage to nearest target in range
 	if (NearestTarget)
 	{
-		UGameplayStatics::ApplyDamage(NearestTarget, AttackDamage, AIController, this, nullptr);
+		// Check if it's a tower
+		ATower* TargetTower = Cast<ATower>(NearestTarget);
+		if (TargetTower)
+		{
+			UE_LOG(LogTemp, Error, TEXT("Zombie attacking TOWER %s for %f damage at distance %f"), *NearestTarget->GetName(), AttackDamage, NearestDistance);
+		}
+		else
+		{
+			UE_LOG(LogTemp, Warning, TEXT("Zombie attacking %s for %f damage at distance %f"), *NearestTarget->GetName(), AttackDamage, NearestDistance);
+		}
+
+		float DamageDealt = UGameplayStatics::ApplyDamage(NearestTarget, AttackDamage, AIController, this, nullptr);
+		UE_LOG(LogTemp, Error, TEXT("ApplyDamage returned: %f"), DamageDealt);
+	}
+	else
+	{
+		UE_LOG(LogTemp, Log, TEXT("Zombie has no target in range (AttackRange: %f, TowerAttackRange: %f)"), AttackRange, TowerAttackRange);
 	}
 }
 

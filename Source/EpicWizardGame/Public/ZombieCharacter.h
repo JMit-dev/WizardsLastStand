@@ -42,6 +42,10 @@ protected:
 	UPROPERTY(EditAnywhere, Category="Combat")
 	float AttackRange = 150.0f;
 
+	/** Range for attacking towers (can be larger since towers are bigger) */
+	UPROPERTY(EditAnywhere, Category="Combat")
+	float TowerAttackRange = 1000.0f;
+
 	/** Time to wait after death before destroying */
 	UPROPERTY(EditAnywhere, Category="Death")
 	float DeathDestroyDelay = 5.0f;

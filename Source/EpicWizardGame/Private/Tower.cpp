@@ -46,6 +46,8 @@ float ATower::TakeDamage(float Damage, struct FDamageEvent const& DamageEvent, A
 
 	CurrentHP -= Damage;
 
+	UE_LOG(LogTemp, Warning, TEXT("Tower took %f damage! Current HP: %f / %f"), Damage, CurrentHP, MaxHP);
+
 	// Call blueprint event for damage feedback
 	BP_OnTowerDamaged(Damage, CurrentHP);
 

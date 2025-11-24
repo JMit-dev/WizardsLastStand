@@ -89,8 +89,22 @@ void AZombieAIController::UpdateAI()
 		return;
 	}
 
-	// If in attack range, attack
-	if (NearestDistance <= AttackDistance)
+	// Check if in attack range (use different ranges for player vs tower)
+	bool bInAttackRange = false;
+	ATower* TargetTower = Cast<ATower>(NearestTarget);
+
+	if (TargetTower)
+	{
+		// Use larger attack distance for towers
+		bInAttackRange = (NearestDistance <= 300.0f);
+	}
+	else
+	{
+		// Use normal attack distance for player
+		bInAttackRange = (NearestDistance <= AttackDistance);
+	}
+
+	if (bInAttackRange)
 	{
 		// Stop moving
 		StopMovement();
