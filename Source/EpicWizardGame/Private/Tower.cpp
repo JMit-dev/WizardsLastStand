@@ -2,6 +2,8 @@
 
 #include "Tower.h"
 #include "Components/WidgetComponent.h"
+#include "Kismet/GameplayStatics.h"
+#include "TimerManager.h"
 
 // Sets default values
 ATower::ATower()
@@ -69,5 +71,12 @@ void ATower::DestroyTower()
 
 	// Call blueprint event
 	BP_OnTowerDestroyed();
+
+	// Return to title screen after a short delay
+	FTimerHandle ReturnToTitleTimer;
+	GetWorld()->GetTimerManager().SetTimer(ReturnToTitleTimer, [this]()
+	{
+		UGameplayStatics::OpenLevel(this, FName("TitleScreen"));
+	}, 2.0f, false);
 }
 

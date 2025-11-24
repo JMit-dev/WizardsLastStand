@@ -13,6 +13,8 @@
 #include "GameFramework/CharacterMovementComponent.h"
 #include "WizardPlayerController.h"
 #include "HotbarWidget.h"
+#include "Kismet/GameplayStatics.h"
+#include "TimerManager.h"
 
 AWizardCharacter::AWizardCharacter()
 {
@@ -248,6 +250,13 @@ void AWizardCharacter::Die()
 	DisableInput(nullptr);
 	GetCharacterMovement()->StopMovementImmediately();
 	BP_OnDeath();
+
+	// Return to title screen after a short delay
+	FTimerHandle ReturnToTitleTimer;
+	GetWorld()->GetTimerManager().SetTimer(ReturnToTitleTimer, [this]()
+	{
+		UGameplayStatics::OpenLevel(this, FName("TitleScreen"));
+	}, 2.0f, false);
 }
 
 void AWizardCharacter::HotbarScrollInput(const FInputActionValue& Value)
