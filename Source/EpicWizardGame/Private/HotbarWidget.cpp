@@ -2,6 +2,10 @@
 
 #include "HotbarWidget.h"
 #include "Components/Border.h"
+#include "SpellBase.h"
+#include "WizardCharacter.h"
+#include "WizardPlayerController.h"
+#include "EngineUtils.h"
 
 void UHotbarWidget::NativeConstruct()
 {
@@ -70,7 +74,61 @@ void UHotbarWidget::UseCurrentSlot()
 	OnSlotUsed.Broadcast(CurrentSlotIndex);
 	OnUseSlot(CurrentSlotIndex);
 
-	UE_LOG(LogTemp, Log, TEXT("HotbarWidget: Used slot %d"), CurrentSlotIndex + 1);
+	// Get the spell for this slot
+	TSubclassOf<ASpellBase> SpellClass = GetSpellInSlot(CurrentSlotIndex);
+	if (!SpellClass)
+	{
+		UE_LOG(LogTemp, Warning, TEXT("HotbarWidget: No spell in slot %d"), CurrentSlotIndex + 1);
+		return;
+	}
+
+	// Get the wizard character
+	AWizardPlayerController* PC = Cast<AWizardPlayerController>(GetOwningPlayer());
+	if (!PC)
+	{
+		return;
+	}
+
+	APawn* Pawn = PC->GetPawn();
+	AWizardCharacter* Wizard = Cast<AWizardCharacter>(Pawn);
+	if (!Wizard)
+	{
+		return;
+	}
+
+	// Find or spawn the spell actor
+	ASpellBase* Spell = nullptr;
+	for (TActorIterator<ASpellBase> It(GetWorld(), SpellClass); It; ++It)
+	{
+		Spell = *It;
+		break;
+	}
+
+	if (!Spell)
+	{
+		// Spawn spell if it doesn't exist
+		Spell = GetWorld()->SpawnActor<ASpellBase>(SpellClass);
+	}
+
+	if (Spell && Spell->CanCast())
+	{
+		Spell->Execute(Wizard);
+		UE_LOG(LogTemp, Log, TEXT("HotbarWidget: Cast %s from slot %d"), *Spell->SpellName, CurrentSlotIndex + 1);
+	}
+	else if (Spell)
+	{
+		UE_LOG(LogTemp, Warning, TEXT("HotbarWidget: %s on cooldown (%.1fs remaining)"), *Spell->SpellName, Spell->GetCooldownRemaining());
+	}
+}
+
+TSubclassOf<ASpellBase> UHotbarWidget::GetSpellInSlot(int32 SlotIndex) const
+{
+	if (HotbarSpells.IsValidIndex(SlotIndex))
+	{
+		return HotbarSpells[SlotIndex];
+	}
+
+	return nullptr;
 }
 
 void UHotbarWidget::UpdateVisuals()

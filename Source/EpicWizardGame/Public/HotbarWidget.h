@@ -62,6 +62,10 @@ public:
 	UPROPERTY(BlueprintReadWrite, meta=(BindWidget), Category="Hotbar")
 	UBorder* HotbarSlot4;
 
+	/** Spell assigned to each hotbar slot */
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Hotbar|Spells")
+	TArray<TSubclassOf<class ASpellBase>> HotbarSpells;
+
 	/** Select next hotbar slot (scroll down) */
 	UFUNCTION(BlueprintCallable, Category="Hotbar")
 	void SelectNextSlot();
@@ -85,6 +89,10 @@ public:
 	/** Get the currently selected slot index */
 	UFUNCTION(BlueprintPure, Category="Hotbar")
 	int32 GetCurrentSlotIndex() const { return CurrentSlotIndex; }
+
+	/** Get the spell in a specific slot */
+	UFUNCTION(BlueprintPure, Category="Hotbar")
+	TSubclassOf<class ASpellBase> GetSpellInSlot(int32 SlotIndex) const;
 
 	/** Blueprint event called when a slot should be used - implement in BP */
 	UFUNCTION(BlueprintImplementableEvent, Category="Hotbar")

@@ -188,7 +188,19 @@ void AWizardCharacter::DoCastSpell()
 		return;
 	}
 
-	// If no montage, just trigger the spell effect
+	// Use hotbar spell instead of old system
+	AWizardPlayerController* PC = Cast<AWizardPlayerController>(GetController());
+	if (PC)
+	{
+		UHotbarWidget* HotbarWidget = PC->GetHotbarWidget();
+		if (HotbarWidget)
+		{
+			HotbarWidget->UseCurrentSlot();
+			return;
+		}
+	}
+
+	// Fallback: If no montage, just trigger the spell effect
 	if (!SpellCastMontage)
 	{
 		BP_OnSpellCast();
