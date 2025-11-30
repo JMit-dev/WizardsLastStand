@@ -120,6 +120,18 @@ public:
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Hotbar|Textures")
 	UTexture2D* StaffTexture;
 
+	/** Preview turret actor (spawned when in turret mode) */
+	UPROPERTY(BlueprintReadOnly, Category="Hotbar|Preview")
+	ATurret* PreviewTurret;
+
+	/** Material to apply to preview turret (make it translucent) */
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Hotbar|Preview")
+	UMaterialInterface* PreviewMaterial;
+
+	/** Opacity for preview turret */
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Hotbar|Preview")
+	float PreviewOpacity = 0.5f;
+
 	/** Select next hotbar slot (scroll down) */
 	UFUNCTION(BlueprintCallable, Category="Hotbar")
 	void SelectNextSlot();
@@ -179,6 +191,8 @@ public:
 protected:
 
 	virtual void NativeConstruct() override;
+	virtual void NativeDestruct() override;
+	virtual void NativeTick(const FGeometry& MyGeometry, float InDeltaTime) override;
 	virtual FReply NativeOnKeyDown(const FGeometry& InGeometry, const FKeyEvent& InKeyEvent) override;
 	virtual FReply NativeOnMouseWheel(const FGeometry& InGeometry, const FPointerEvent& InMouseEvent) override;
 	virtual FReply NativeOnMouseButtonDown(const FGeometry& InGeometry, const FPointerEvent& InMouseEvent) override;
@@ -196,6 +210,15 @@ protected:
 
 	/** Get image widget for a given slot index */
 	UImage* GetSlotImage(int32 SlotIndex) const;
+
+	/** Update preview turret position and visibility */
+	void UpdatePreviewTurret();
+
+	/** Spawn or update preview turret for current slot */
+	void SpawnPreviewTurret();
+
+	/** Destroy preview turret */
+	void DestroyPreviewTurret();
 
 private:
 

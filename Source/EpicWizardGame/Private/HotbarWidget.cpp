@@ -18,8 +18,34 @@ void UHotbarWidget::NativeConstruct()
 	// Start with first slot selected
 	CurrentSlotIndex = 0;
 	CurrentMode = EHotbarMode::Spells;
+	PreviewTurret = nullptr;
 	UpdateVisuals();
 	UpdateSlotTextures();
+}
+
+void UHotbarWidget::NativeDestruct()
+{
+	DestroyPreviewTurret();
+	Super::NativeDestruct();
+}
+
+void UHotbarWidget::NativeTick(const FGeometry& MyGeometry, float InDeltaTime)
+{
+	Super::NativeTick(MyGeometry, InDeltaTime);
+
+	// Update preview turret if in turret mode and not on slot 4
+	if (CurrentMode == EHotbarMode::Turrets && CurrentSlotIndex != 4)
+	{
+		UpdatePreviewTurret();
+	}
+	else
+	{
+		// Hide or destroy preview when not in turret placement mode
+		if (PreviewTurret)
+		{
+			PreviewTurret->SetActorHiddenInGame(true);
+		}
+	}
 }
 
 FReply UHotbarWidget::NativeOnKeyDown(const FGeometry& InGeometry, const FKeyEvent& InKeyEvent)
@@ -338,6 +364,12 @@ void UHotbarWidget::SetMode(EHotbarMode NewMode)
 		UpdateSlotTextures();
 		OnModeChanged.Broadcast(CurrentMode);
 
+		// Destroy preview when switching to spell mode
+		if (CurrentMode == EHotbarMode::Spells)
+		{
+			DestroyPreviewTurret();
+		}
+
 		UE_LOG(LogTemp, Log, TEXT("HotbarWidget: Switched to %s mode"),
 			CurrentMode == EHotbarMode::Spells ? TEXT("Spell") : TEXT("Turret"));
 	}
@@ -416,6 +448,151 @@ UImage* UHotbarWidget::GetSlotImage(int32 SlotIndex) const
 		case 3: return ImageSlot3;
 		case 4: return ImageSlot4;
 		default: return nullptr;
+	}
+}
+
+void UHotbarWidget::UpdatePreviewTurret()
+{
+	// Get the wizard player controller
+	AWizardPlayerController* PC = Cast<AWizardPlayerController>(GetOwningPlayer());
+	if (!PC)
+	{
+		return;
+	}
+
+	APawn* Pawn = PC->GetPawn();
+	AWizardCharacter* Wizard = Cast<AWizardCharacter>(Pawn);
+	if (!Wizard)
+	{
+		return;
+	}
+
+	// Perform raycast from camera to find placement location
+	FVector CameraLocation;
+	FRotator CameraRotation;
+	PC->GetPlayerViewPoint(CameraLocation, CameraRotation);
+
+	FVector TraceEnd = CameraLocation + (CameraRotation.Vector() * 5000.0f);
+
+	FHitResult HitResult;
+	FCollisionQueryParams QueryParams;
+	QueryParams.AddIgnoredActor(Wizard);
+	if (PreviewTurret)
+	{
+		QueryParams.AddIgnoredActor(PreviewTurret);
+	}
+
+	bool bHit = GetWorld()->LineTraceSingleByChannel(
+		HitResult,
+		CameraLocation,
+		TraceEnd,
+		ECC_Visibility,
+		QueryParams
+	);
+
+	if (bHit)
+	{
+		// Spawn preview turret if it doesn't exist or is wrong type
+		TSubclassOf<ATurret> DesiredTurretClass = GetTurretInSlot(CurrentSlotIndex);
+		if (DesiredTurretClass && (!PreviewTurret || PreviewTurret->GetClass() != DesiredTurretClass))
+		{
+			SpawnPreviewTurret();
+		}
+
+		// Update preview turret position
+		if (PreviewTurret)
+		{
+			PreviewTurret->SetActorLocation(HitResult.Location);
+			PreviewTurret->SetActorHiddenInGame(false);
+		}
+	}
+	else
+	{
+		// Hide preview if no valid placement
+		if (PreviewTurret)
+		{
+			PreviewTurret->SetActorHiddenInGame(true);
+		}
+	}
+}
+
+void UHotbarWidget::SpawnPreviewTurret()
+{
+	// Destroy existing preview
+	DestroyPreviewTurret();
+
+	TSubclassOf<ATurret> TurretClass = GetTurretInSlot(CurrentSlotIndex);
+	if (!TurretClass)
+	{
+		return;
+	}
+
+	FActorSpawnParameters SpawnParams;
+	SpawnParams.SpawnCollisionHandlingOverride = ESpawnActorCollisionHandlingMethod::AlwaysSpawn;
+
+	FVector SpawnLocation = FVector::ZeroVector;
+	FRotator SpawnRotation = FRotator::ZeroRotator;
+
+	PreviewTurret = GetWorld()->SpawnActor<ATurret>(TurretClass, SpawnLocation, SpawnRotation, SpawnParams);
+
+	if (PreviewTurret)
+	{
+		// Disable collision and tick on preview
+		PreviewTurret->SetActorEnableCollision(false);
+		PreviewTurret->SetActorTickEnabled(false);
+
+		// Make the preview translucent
+		TArray<UActorComponent*> Components;
+		PreviewTurret->GetComponents(UStaticMeshComponent::StaticClass(), Components);
+
+		for (UActorComponent* Component : Components)
+		{
+			UStaticMeshComponent* MeshComp = Cast<UStaticMeshComponent>(Component);
+			if (MeshComp)
+			{
+				// Apply preview material if set, otherwise just adjust opacity
+				if (PreviewMaterial)
+				{
+					for (int32 i = 0; i < MeshComp->GetNumMaterials(); i++)
+					{
+						MeshComp->SetMaterial(i, PreviewMaterial);
+					}
+				}
+				else
+				{
+					// Create a dynamic material instance with transparency
+					for (int32 i = 0; i < MeshComp->GetNumMaterials(); i++)
+					{
+						UMaterialInterface* OriginalMat = MeshComp->GetMaterial(i);
+						if (OriginalMat)
+						{
+							UMaterialInstanceDynamic* DynMat = UMaterialInstanceDynamic::Create(OriginalMat, this);
+							if (DynMat)
+							{
+								DynMat->SetScalarParameterValue(FName("Opacity"), PreviewOpacity);
+								MeshComp->SetMaterial(i, DynMat);
+							}
+						}
+					}
+				}
+
+				// Enable transparency rendering
+				MeshComp->SetRenderCustomDepth(false);
+			}
+		}
+
+		PreviewTurret->SetActorHiddenInGame(true);
+		UE_LOG(LogTemp, Log, TEXT("HotbarWidget: Spawned preview turret"));
+	}
+}
+
+void UHotbarWidget::DestroyPreviewTurret()
+{
+	if (PreviewTurret)
+	{
+		PreviewTurret->Destroy();
+		PreviewTurret = nullptr;
+		UE_LOG(LogTemp, Log, TEXT("HotbarWidget: Destroyed preview turret"));
 	}
 }
 
