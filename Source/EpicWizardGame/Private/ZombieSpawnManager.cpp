@@ -20,6 +20,15 @@ void AZombieSpawnManager::BeginPlay()
 {
 	Super::BeginPlay();
 
+	// Check if we're in the title screen - if so, don't start spawning
+	FString CurrentLevelName = GetWorld()->GetMapName();
+	CurrentLevelName.RemoveFromStart(GetWorld()->StreamingLevelsPrefix);
+	if (CurrentLevelName.Contains(TEXT("TitleScreen")))
+	{
+		UE_LOG(LogTemp, Log, TEXT("ZombieSpawnManager: In TitleScreen level, spawning disabled"));
+		return;
+	}
+
 	// Find all spawn gates in the level
 	FindSpawnGates();
 

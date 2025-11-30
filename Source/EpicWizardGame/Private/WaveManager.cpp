@@ -18,6 +18,15 @@ void AWaveManager::BeginPlay()
 {
 	Super::BeginPlay();
 
+	// Check if we're in the title screen - if so, don't start waves
+	FString CurrentLevelName = GetWorld()->GetMapName();
+	CurrentLevelName.RemoveFromStart(GetWorld()->StreamingLevelsPrefix);
+	if (CurrentLevelName.Contains(TEXT("TitleScreen")))
+	{
+		UE_LOG(LogTemp, Log, TEXT("WaveManager: In TitleScreen level, waves disabled"));
+		return;
+	}
+
 	// Find spawn manager
 	FindSpawnManager();
 
