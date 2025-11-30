@@ -6,7 +6,7 @@
 #include "Camera/CameraComponent.h"
 #include "Kismet/GameplayStatics.h"
 #include "DrawDebugHelpers.h"
-#include "Components/StaticMeshComponent.h"
+#include "SpellProjectile.h"
 #include "Engine/DamageEvents.h"
 
 ALightningSpell::ALightningSpell()
@@ -97,22 +97,24 @@ void ALightningSpell::Execute(AWizardCharacter* Caster)
 
 	UE_LOG(LogTemp, Log, TEXT("Lightning AOE hit %d additional zombies"), AOEHits);
 
-	// Spawn yellow vertical lightning bolt from sky to ground
-	FVector BoltTop = StrikeLocation + FVector(0.0f, 0.0f, 2000.0f);
-	FVector BoltCenter = (BoltTop + StrikeLocation) / 2.0f;
-
-	AActor* LightningBolt = GetWorld()->SpawnActor<AActor>(AActor::StaticClass(), BoltCenter, FRotator::ZeroRotator);
-	if (LightningBolt)
+	// Spawn projectile visual (lightning bolt) similar to other spells
+	if (ProjectileClass)
 	{
-		UStaticMeshComponent* BoltMesh = NewObject<UStaticMeshComponent>(LightningBolt);
-		BoltMesh->RegisterComponent();
-		BoltMesh->SetupAttachment(LightningBolt->GetRootComponent());
+		FVector SpawnLocation = CameraLocation + (CameraForward * SpawnDistance);
 
-		// Tall vertical yellow rectangle
-		FVector BoltScale(0.5f, 0.5f, 20.0f);
-		BoltMesh->SetRelativeScale3D(BoltScale);
+		FActorSpawnParameters SpawnParams;
+		SpawnParams.Owner = Caster;
+		SpawnParams.Instigator = Caster;
 
-		LightningBolt->SetLifeSpan(0.3f);
+		if (ASpellProjectile* Projectile = GetWorld()->SpawnActor<ASpellProjectile>(
+			ProjectileClass,
+			SpawnLocation,
+			CameraForward.Rotation(),
+			SpawnParams))
+		{
+			// Damage already applied via raycast/AOE
+			Projectile->InitializeProjectile(CameraForward, 0.0f);
+		}
 	}
 
 	// Debug visualization

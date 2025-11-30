@@ -6,6 +6,8 @@
 #include "SpellBase.h"
 #include "IceSpell.generated.h"
 
+class ASpellProjectile;
+
 /**
  * Ice spell - cone-shaped freeze effect
  */
@@ -33,6 +35,14 @@ public:
 	/** Movement speed multiplier when frozen */
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Spell")
 	float FreezeSpeedMultiplier = 0.2f;
+
+	/** Projectile class to spawn for the ice shard visual */
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Spell")
+	TSubclassOf<ASpellProjectile> ProjectileClass;
+
+	/** Spawn offset from character */
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Spell")
+	float SpawnDistance = 100.0f;
 
 	virtual void Execute(AWizardCharacter* Caster) override;
 };

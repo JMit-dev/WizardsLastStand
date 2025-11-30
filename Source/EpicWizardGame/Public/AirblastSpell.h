@@ -26,6 +26,10 @@ public:
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Spell")
 	float KnockbackForce = 1000.0f;
 
+	/** Projectile class to spawn for the airblast */
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Spell")
+	TSubclassOf<AActor> ProjectileClass;
+
 	/** Projectile speed for airblast rectangle */
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Spell")
 	float ProjectileSpeed = 1500.0f;

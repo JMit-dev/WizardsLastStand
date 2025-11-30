@@ -3,10 +3,10 @@
 #include "IceSpell.h"
 #include "WizardCharacter.h"
 #include "ZombieCharacter.h"
+#include "SpellProjectile.h"
 #include "Camera/CameraComponent.h"
 #include "GameFramework/CharacterMovementComponent.h"
 #include "Kismet/GameplayStatics.h"
-#include "Components/StaticMeshComponent.h"
 #include "Engine/DamageEvents.h"
 
 AIceSpell::AIceSpell()
@@ -97,21 +97,23 @@ void AIceSpell::Execute(AWizardCharacter* Caster)
 
 	UE_LOG(LogTemp, Log, TEXT("Ice spell cast! Froze %d zombies"), ZombiesFrozen);
 
-	// Spawn blue cone visual that shoots forward
-	FVector SpawnLocation = CameraLocation + (CameraForward * 100.0f);
-	AActor* IceCone = GetWorld()->SpawnActor<AActor>(AActor::StaticClass(), SpawnLocation, CameraForward.Rotation());
-	if (IceCone)
+	// Spawn projectile visual (ice shard) similar to fireball flow
+	if (ProjectileClass)
 	{
-		UStaticMeshComponent* ConeMesh = NewObject<UStaticMeshComponent>(IceCone);
-		ConeMesh->RegisterComponent();
-		ConeMesh->SetupAttachment(IceCone->GetRootComponent());
+		FVector SpawnLocation = CameraLocation + (CameraForward * SpawnDistance);
 
-		// Cone shape pointing forward, blue and semi-transparent
-		FVector ConeScale(ConeRange / 100.0f, 2.0f, 2.0f);
-		ConeMesh->SetRelativeScale3D(ConeScale);
-		ConeMesh->SetRelativeRotation(FRotator(0.0f, -90.0f, 0.0f));
+		FActorSpawnParameters SpawnParams;
+		SpawnParams.Owner = Caster;
+		SpawnParams.Instigator = Caster;
 
-		IceCone->SetLifeSpan(0.5f);
+		if (ASpellProjectile* Projectile = GetWorld()->SpawnActor<ASpellProjectile>(
+			ProjectileClass,
+			SpawnLocation,
+			CameraForward.Rotation(),
+			SpawnParams))
+		{
+			// Damage is already applied by the cone; projectile here is for visuals/FX
+			Projectile->InitializeProjectile(CameraForward, 0.0f);
+		}
 	}
 }
-
