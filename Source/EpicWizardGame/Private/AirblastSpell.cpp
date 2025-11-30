@@ -16,6 +16,7 @@ AAirblastSpell::AAirblastSpell()
 	SpellName = "Airblast";
 	BaseDamage = 5.0f;
 	Cooldown = 1.5f;
+	ProjectileClass = AActor::StaticClass();
 }
 
 void AAirblastSpell::Execute(AWizardCharacter* Caster)
@@ -38,21 +39,30 @@ void AAirblastSpell::Execute(AWizardCharacter* Caster)
 	FVector CameraForward = Camera->GetForwardVector();
 	FVector SpawnLocation = CameraLocation + (CameraForward * 100.0f);
 
-	// Spawn wide horizontal rectangle projectile
-	AActor* AirblastProjectile = GetWorld()->SpawnActor<AActor>(AActor::StaticClass(), SpawnLocation, CameraForward.Rotation());
+	if (!ProjectileClass)
+	{
+		UE_LOG(LogTemp, Warning, TEXT("AirblastSpell::Execute - No projectile class set"));
+		return;
+	}
+
+	// Spawn wide horizontal rectangle projectile (allows custom classes)
+	AActor* AirblastProjectile = GetWorld()->SpawnActor<AActor>(ProjectileClass, SpawnLocation, CameraForward.Rotation());
 	if (!AirblastProjectile)
 	{
 		return;
 	}
 
-	// Add mesh component (wide horizontal rectangle)
-	UStaticMeshComponent* RectMesh = NewObject<UStaticMeshComponent>(AirblastProjectile);
-	RectMesh->RegisterComponent();
-	RectMesh->SetupAttachment(AirblastProjectile->GetRootComponent());
+	// Add a simple default mesh when using the bare AActor class
+	if (ProjectileClass == AActor::StaticClass())
+	{
+		UStaticMeshComponent* RectMesh = NewObject<UStaticMeshComponent>(AirblastProjectile);
+		RectMesh->RegisterComponent();
+		RectMesh->SetupAttachment(AirblastProjectile->GetRootComponent());
 
-	// Wide and short (horizontal rectangle)
-	FVector RectScale(1.0f, 4.0f, 3.0f); // Wide horizontally, shorter vertically
-	RectMesh->SetRelativeScale3D(RectScale);
+		// Wide and short (horizontal rectangle)
+		FVector RectScale(1.0f, 4.0f, 3.0f); // Wide horizontally, shorter vertically
+		RectMesh->SetRelativeScale3D(RectScale);
+	}
 
 	// Set projectile to move forward and destroy after lifetime
 	AirblastProjectile->SetLifeSpan(ProjectileLifetime);

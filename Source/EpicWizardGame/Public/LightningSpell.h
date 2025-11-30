@@ -6,6 +6,8 @@
 #include "SpellBase.h"
 #include "LightningSpell.generated.h"
 
+class ASpellProjectile;
+
 /**
  * Lightning spell - strikes target from above with AOE damage
  */
@@ -29,6 +31,14 @@ public:
 	/** AOE damage multiplier (AOE targets take BaseDamage * this) */
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Spell")
 	float AOEDamageMultiplier = 0.5f;
+
+	/** Projectile class to spawn for lightning visual */
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Spell")
+	TSubclassOf<ASpellProjectile> ProjectileClass;
+
+	/** Spawn offset from character */
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Spell")
+	float SpawnDistance = 100.0f;
 
 	virtual void Execute(AWizardCharacter* Caster) override;
 };

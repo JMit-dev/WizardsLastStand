@@ -53,9 +53,9 @@ public:
 protected:
 
 	/** Find the nearest zombie within detection range */
-	AZombieCharacter* FindNearestZombie();
+	virtual AZombieCharacter* FindNearestZombie();
 
 	/** Shoot projectile at target */
-	void ShootAtTarget(AZombieCharacter* Target);
+	virtual void ShootAtTarget(AZombieCharacter* Target);
 
 };
