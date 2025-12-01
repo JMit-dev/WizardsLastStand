@@ -16,6 +16,16 @@ class EPICWIZARDGAME_API AZombieCharacter : public ACharacter
 {
 	GENERATED_BODY()
 
+public:
+
+	/** Max HP for the zombie */
+	UPROPERTY(BlueprintReadWrite, Category="Health")
+	float MaxHP = 100.0f;
+
+	/** Current HP */
+	UPROPERTY(BlueprintReadWrite, Category="Health")
+	float CurrentHP = 0.0f;
+
 protected:
 
 	/** Floating health bar widget */
@@ -26,17 +36,9 @@ protected:
 	UPROPERTY(EditAnywhere, Category="Animations")
 	UAnimMontage* AttackMontage;
 
-	/** Max HP for the zombie */
-	UPROPERTY(EditAnywhere, Category="Health")
-	float MaxHP = 100.0f;
-
-	/** Current HP */
-	UPROPERTY(BlueprintReadOnly, Category="Health")
-	float CurrentHP = 0.0f;
-
-	/** Damage dealt per attack */
+	/** Damage dealt per attack (33.33 for 3-hit kill with 100HP) */
 	UPROPERTY(EditAnywhere, Category="Combat")
-	float AttackDamage = 20.0f;
+	float AttackDamage = 33.33f;
 
 	/** Range for attack to hit */
 	UPROPERTY(EditAnywhere, Category="Combat")

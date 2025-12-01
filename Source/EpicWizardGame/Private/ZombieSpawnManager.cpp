@@ -135,13 +135,21 @@ void AZombieSpawnManager::TrySpawnZombie()
 
 	if (NewZombie)
 	{
+		// Apply health override if set by wave manager
+		if (ZombieHealthOverride > 0.0f)
+		{
+			NewZombie->MaxHP = ZombieHealthOverride;
+			NewZombie->CurrentHP = ZombieHealthOverride;
+		}
+
 		// Add to active zombies
 		ActiveZombies.Add(NewZombie);
 
 		// Bind to death event
 		NewZombie->OnZombieDeath.AddDynamic(this, &AZombieSpawnManager::OnZombieDied);
 
-		UE_LOG(LogTemp, Log, TEXT("ZombieSpawnManager: Spawned zombie. Total: %d/%d"), ActiveZombies.Num(), MaxTotalZombies);
+		UE_LOG(LogTemp, Log, TEXT("ZombieSpawnManager: Spawned zombie (HP: %.0f). Total: %d/%d"),
+			NewZombie->CurrentHP, ActiveZombies.Num(), MaxTotalZombies);
 	}
 }
 

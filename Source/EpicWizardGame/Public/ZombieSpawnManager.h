@@ -21,6 +21,10 @@ public:
 	UPROPERTY(EditAnywhere, Category="Spawning")
 	int32 MaxTotalZombies = 20;
 
+	/** Health override for spawned zombies (set by wave manager) */
+	UPROPERTY(BlueprintReadWrite, Category="Spawning")
+	float ZombieHealthOverride = 0.0f;
+
 protected:
 
 	/** Time between spawn attempts (seconds) */

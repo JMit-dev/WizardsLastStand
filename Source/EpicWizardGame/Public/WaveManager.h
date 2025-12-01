@@ -21,15 +21,27 @@ protected:
 
 	/** Base number of zombies for wave 1 */
 	UPROPERTY(EditAnywhere, Category="Wave System")
-	int32 BaseZombiesPerWave = 10;
+	int32 BaseZombiesPerWave = 5;
 
-	/** How many additional zombies per wave */
+	/** How many additional zombies per wave (approx 5-6 more per round after round 5) */
 	UPROPERTY(EditAnywhere, Category="Wave System")
-	int32 ZombiesIncreasePerWave = 5;
+	float ZombiesIncreaseMultiplier = 0.15f;
 
 	/** Time between waves (seconds) */
 	UPROPERTY(EditAnywhere, Category="Wave System")
-	float TimeBetweenWaves = 10.0f;
+	float TimeBetweenWaves = 30.0f;
+
+	/** Base zombie health for round 1 */
+	UPROPERTY(EditAnywhere, Category="Wave System|Health")
+	float BaseZombieHealth = 150.0f;
+
+	/** Health increase per round for rounds 1-10 (linear) */
+	UPROPERTY(EditAnywhere, Category="Wave System|Health")
+	float HealthIncreasePerRound = 100.0f;
+
+	/** Health multiplier per round after round 10 (1.1 = 10% increase) */
+	UPROPERTY(EditAnywhere, Category="Wave System|Health")
+	float HealthMultiplierAfterRound10 = 1.1f;
 
 	/** Auto-start first wave on begin play */
 	UPROPERTY(EditAnywhere, Category="Wave System")
@@ -89,6 +101,14 @@ public:
 	/** Is wave currently active */
 	UFUNCTION(BlueprintPure, Category="Wave System")
 	bool IsWaveActive() const { return bWaveActive; }
+
+	/** Calculate zombie health for a given round */
+	UFUNCTION(BlueprintPure, Category="Wave System")
+	float CalculateZombieHealth(int32 RoundNumber) const;
+
+	/** Calculate zombie count for a given round */
+	UFUNCTION(BlueprintPure, Category="Wave System")
+	int32 CalculateZombieCount(int32 RoundNumber) const;
 
 	/** Called when a zombie dies */
 	UFUNCTION()
