@@ -68,8 +68,8 @@ void AWaveManager::StartNextWave()
 	// Set wave as active
 	bWaveActive = true;
 
-	// Update spawn manager with new zombie limit and health
-	SpawnManager->MaxTotalZombies = TotalZombiesThisWave;
+	// Update spawn manager with total zombies to spawn and health
+	SpawnManager->TotalZombiesToSpawn = TotalZombiesThisWave;
 	SpawnManager->ZombieHealthOverride = CalculateZombieHealth(CurrentWave);
 
 	// Restore player health at start of each round

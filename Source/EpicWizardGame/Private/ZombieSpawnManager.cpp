@@ -61,6 +61,7 @@ void AZombieSpawnManager::StartSpawning()
 	}
 
 	bIsSpawning = true;
+	TotalZombiesSpawned = 0; // Reset spawn counter for new wave
 
 	// Start the spawn timer
 	GetWorld()->GetTimerManager().SetTimer(SpawnTimer, this, &AZombieSpawnManager::TrySpawnZombie, SpawnInterval, true);
@@ -97,7 +98,13 @@ void AZombieSpawnManager::TrySpawnZombie()
 	// Clean up dead zombies first
 	CleanupDeadZombies();
 
-	// Check if we're at max capacity
+	// Check if we've spawned all zombies for this wave
+	if (TotalZombiesToSpawn > 0 && TotalZombiesSpawned >= TotalZombiesToSpawn)
+	{
+		return;
+	}
+
+	// Check if we're at max alive capacity
 	if (ActiveZombies.Num() >= MaxTotalZombies)
 	{
 		return;
@@ -145,11 +152,14 @@ void AZombieSpawnManager::TrySpawnZombie()
 		// Add to active zombies
 		ActiveZombies.Add(NewZombie);
 
+		// Increment spawned counter
+		TotalZombiesSpawned++;
+
 		// Bind to death event
 		NewZombie->OnZombieDeath.AddDynamic(this, &AZombieSpawnManager::OnZombieDied);
 
-		UE_LOG(LogTemp, Log, TEXT("ZombieSpawnManager: Spawned zombie (HP: %.0f). Total: %d/%d"),
-			NewZombie->CurrentHP, ActiveZombies.Num(), MaxTotalZombies);
+		UE_LOG(LogTemp, Log, TEXT("ZombieSpawnManager: Spawned zombie %d/%d (HP: %.0f). Alive: %d/%d"),
+			TotalZombiesSpawned, TotalZombiesToSpawn, NewZombie->CurrentHP, ActiveZombies.Num(), MaxTotalZombies);
 	}
 }
 

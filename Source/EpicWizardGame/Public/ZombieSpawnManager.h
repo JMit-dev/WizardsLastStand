@@ -21,6 +21,10 @@ public:
 	UPROPERTY(EditAnywhere, Category="Spawning")
 	int32 MaxTotalZombies = 20;
 
+	/** Total zombies to spawn this wave (set by wave manager) */
+	UPROPERTY(BlueprintReadWrite, Category="Spawning")
+	int32 TotalZombiesToSpawn = 0;
+
 	/** Health override for spawned zombies (set by wave manager) */
 	UPROPERTY(BlueprintReadWrite, Category="Spawning")
 	float ZombieHealthOverride = 0.0f;
@@ -46,6 +50,9 @@ protected:
 	/** Array of all active zombies */
 	UPROPERTY()
 	TArray<AZombieCharacter*> ActiveZombies;
+
+	/** Total zombies spawned this wave */
+	int32 TotalZombiesSpawned = 0;
 
 	/** Timer for spawn intervals */
 	FTimerHandle SpawnTimer;
