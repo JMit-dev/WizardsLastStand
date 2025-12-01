@@ -10,6 +10,7 @@ ATurretAir::ATurretAir()
 	// Mirror airblast spell pacing and damage
 	FireRate = 1.5f;
 	ProjectileDamage = 5.0f;
+	ProjectileVerticalOffset = 80.0f;
 	AirProjectileClass = AActor::StaticClass();
 }
 
@@ -26,9 +27,15 @@ void ATurretAir::ShootAtTarget(AZombieCharacter* Target)
 	}
 
 	FVector Direction = (Target->GetActorLocation() - GetActorLocation()).GetSafeNormal();
-	FVector SpawnLocation = GetActorLocation() + (Direction * 100.0f);
+	// Spawn slightly forward and raised so the blast doesn't originate at the base
+	FVector SpawnLocation = GetActorLocation()
+		+ (Direction * 100.0f)
+		+ FVector(0.0f, 0.0f, ProjectileVerticalOffset);
 
-	AActor* AirblastProjectile = GetWorld()->SpawnActor<AActor>(AirProjectileClass, SpawnLocation, Direction.Rotation());
+	FRotator SpawnRotation = Direction.Rotation();
+	SpawnRotation.Pitch += ProjectileVisualPitchOffset; // visual-only tweak
+
+	AActor* AirblastProjectile = GetWorld()->SpawnActor<AActor>(AirProjectileClass, SpawnLocation, SpawnRotation);
 	if (!AirblastProjectile)
 	{
 		return;

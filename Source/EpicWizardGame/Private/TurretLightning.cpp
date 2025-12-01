@@ -3,6 +3,7 @@
 #include "Kismet/GameplayStatics.h"
 #include "SpellProjectile.h"
 #include "Engine/DamageEvents.h"
+#include "GameFramework/ProjectileMovementComponent.h"
 
 ATurretLightning::ATurretLightning()
 {
@@ -45,9 +46,10 @@ void ATurretLightning::ShootAtTarget(AZombieCharacter* Target)
 	// Visual projectile
 	if (ProjectileClass)
 	{
-		FVector TurretLocation = GetActorLocation();
-		FVector Direction = (StrikeLocation - TurretLocation).GetSafeNormal();
-		FVector SpawnLocation = TurretLocation + FVector(0.0f, 0.0f, 50.0f);
+		// Spawn a visual strike above the target and send it straight down
+		FVector SpawnLocation = StrikeLocation + FVector(0.0f, 0.0f, LightningStrikeHeight);
+		FVector Direction = FVector(0.0f, 0.0f, -1.0f);
+		FRotator SpawnRotation = Direction.Rotation();
 
 		FActorSpawnParameters SpawnParams;
 		SpawnParams.Owner = this;
@@ -56,10 +58,24 @@ void ATurretLightning::ShootAtTarget(AZombieCharacter* Target)
 		if (ASpellProjectile* Projectile = GetWorld()->SpawnActor<ASpellProjectile>(
 			ProjectileClass,
 			SpawnLocation,
-			Direction.Rotation(),
+			SpawnRotation,
 			SpawnParams))
 		{
-			Projectile->InitializeProjectile(Direction, 0.0f);
+			// Push the projectile downward quickly; damage already applied above
+			if (UProjectileMovementComponent* Movement = Projectile->FindComponentByClass<UProjectileMovementComponent>())
+			{
+				const float OriginalSpeed = Movement->InitialSpeed;
+				Movement->InitialSpeed = LightningStrikeSpeed;
+				Movement->MaxSpeed = LightningStrikeSpeed;
+				Projectile->InitializeProjectile(Direction, 0.0f);
+				// Restore configured speed in case this projectile instance is reused elsewhere
+				Movement->InitialSpeed = OriginalSpeed;
+				Movement->MaxSpeed = OriginalSpeed;
+			}
+			else
+			{
+				Projectile->InitializeProjectile(Direction, 0.0f);
+			}
 		}
 	}
 }

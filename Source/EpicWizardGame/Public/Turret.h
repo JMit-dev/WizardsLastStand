@@ -32,6 +32,18 @@ protected:
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Combat")
 	float ProjectileDamage = 25.0f;
 
+	/** Vertical offset so spawned projectiles start higher on the turret */
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Combat")
+	float ProjectileVerticalOffset = 50.0f;
+
+	/** Pitch bias (degrees) applied to the projectile's actual travel direction */
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Combat")
+	float ProjectileAimPitchOffset = 0.0f;
+
+	/** Visual-only pitch adjustment for spawned projectiles (aim remains unchanged) */
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Combat")
+	float ProjectileVisualPitchOffset = 0.0f;
+
 	/** Timer for firing */
 	float FireTimer = 0.0f;
 

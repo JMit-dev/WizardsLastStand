@@ -93,14 +93,21 @@ void ATurret::ShootAtTarget(AZombieCharacter* Target)
 	FVector TargetLocation = Target->GetActorLocation();
 	FVector Direction = (TargetLocation - TurretLocation).GetSafeNormal();
 
+	// Apply aim pitch bias to adjust travel arc
+	FRotator AimRotation = Direction.Rotation();
+	AimRotation.Pitch += ProjectileAimPitchOffset;
+	Direction = AimRotation.Vector();
+
 	// Spawn projectile at turret location with offset upward
-	FVector SpawnLocation = TurretLocation + FVector(0, 0, 50.0f);
+	FVector SpawnLocation = TurretLocation + FVector(0, 0, ProjectileVerticalOffset);
+	FRotator SpawnRotation = Direction.Rotation();
+	SpawnRotation.Pitch += ProjectileVisualPitchOffset; // visual-only tweak
 
 	FActorSpawnParameters SpawnParams;
 	SpawnParams.Owner = this;
 	SpawnParams.Instigator = GetInstigator();
 
-	ASpellProjectile* Projectile = GetWorld()->SpawnActor<ASpellProjectile>(ProjectileClass, SpawnLocation, FRotator::ZeroRotator, SpawnParams);
+	ASpellProjectile* Projectile = GetWorld()->SpawnActor<ASpellProjectile>(ProjectileClass, SpawnLocation, SpawnRotation, SpawnParams);
 
 	if (Projectile)
 	{

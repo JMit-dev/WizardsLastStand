@@ -20,7 +20,20 @@ void ATurretIce::ShootAtTarget(AZombieCharacter* Target)
 	}
 
 	FVector TurretLocation = GetActorLocation();
-	FVector Forward = (Target->GetActorLocation() - TurretLocation).GetSafeNormal();
+	// Keep the ice cone level so it doesn't pitch upward when targets are close
+	FVector Forward = Target->GetActorLocation() - TurretLocation;
+	Forward.Z = 0.0f;
+	Forward = Forward.GetSafeNormal();
+	if (Forward.IsNearlyZero())
+	{
+		Forward = GetActorForwardVector();
+		Forward.Z = 0.0f;
+		Forward = Forward.GetSafeNormal();
+	}
+
+	// Track if the primary target is actually inside the cone/range for visuals
+	const float TargetDistance2D = FVector::Dist2D(Target->GetActorLocation(), TurretLocation);
+	const bool bTargetInConeRange = TargetDistance2D <= ConeRange;
 
 	TArray<AActor*> FoundActors;
 	UGameplayStatics::GetAllActorsOfClass(GetWorld(), AZombieCharacter::StaticClass(), FoundActors);
@@ -42,8 +55,14 @@ void ATurretIce::ShootAtTarget(AZombieCharacter* Target)
 			continue;
 		}
 
-		ToZombie.Normalize();
-		float AngleRadians = FMath::Acos(FVector::DotProduct(Forward, ToZombie));
+		FVector ToZombieFlat = ToZombie;
+		ToZombieFlat.Z = 0.0f;
+		if (!ToZombieFlat.Normalize())
+		{
+			continue;
+		}
+
+		float AngleRadians = FMath::Acos(FMath::Clamp(FVector::DotProduct(Forward, ToZombieFlat), -1.0f, 1.0f));
 		float AngleDegrees = FMath::RadiansToDegrees(AngleRadians);
 
 		if (AngleDegrees <= ConeAngle)
@@ -71,9 +90,14 @@ void ATurretIce::ShootAtTarget(AZombieCharacter* Target)
 	}
 
 	// Quick ice cone visual
-	if (ProjectileClass)
+	if (ProjectileClass && bTargetInConeRange)
 	{
-		FVector SpawnLocation = TurretLocation + (Forward * 100.0f);
+		FVector SpawnLocation = TurretLocation
+			+ (Forward * 100.0f)
+			+ FVector(0.0f, 0.0f, ProjectileVerticalOffset);
+		FRotator SpawnRotation = Forward.Rotation();
+		SpawnRotation.Pitch += ProjectileVisualPitchOffset; // visual-only tweak
+
 		FActorSpawnParameters SpawnParams;
 		SpawnParams.Owner = this;
 		SpawnParams.Instigator = GetInstigator();
@@ -81,7 +105,7 @@ void ATurretIce::ShootAtTarget(AZombieCharacter* Target)
 		if (ASpellProjectile* Projectile = GetWorld()->SpawnActor<ASpellProjectile>(
 			ProjectileClass,
 			SpawnLocation,
-			Forward.Rotation(),
+			SpawnRotation,
 			SpawnParams))
 		{
 			// Visual-only shot; damage is handled by the cone application above

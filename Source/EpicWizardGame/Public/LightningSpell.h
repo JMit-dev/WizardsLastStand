@@ -40,5 +40,13 @@ public:
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Spell")
 	float SpawnDistance = 100.0f;
 
+	/** How high above the strike point to spawn the lightning visual */
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Spell")
+	float LightningStrikeHeight = 600.0f;
+
+	/** Speed multiplier for the downward strike visual */
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Spell")
+	float LightningStrikeSpeed = 3000.0f;
+
 	virtual void Execute(AWizardCharacter* Caster) override;
 };

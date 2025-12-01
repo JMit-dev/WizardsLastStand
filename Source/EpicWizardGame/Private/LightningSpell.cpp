@@ -8,6 +8,7 @@
 #include "DrawDebugHelpers.h"
 #include "SpellProjectile.h"
 #include "Engine/DamageEvents.h"
+#include "GameFramework/ProjectileMovementComponent.h"
 
 ALightningSpell::ALightningSpell()
 {
@@ -99,10 +100,11 @@ void ALightningSpell::Execute(AWizardCharacter* Caster)
 
 	UE_LOG(LogTemp, Log, TEXT("Lightning AOE hit %d additional zombies"), AOEHits);
 
-	// Spawn projectile visual (lightning bolt) similar to other spells
+	// Spawn projectile visual (lightning bolt) that drops from above the strike point
 	if (ProjectileClass)
 	{
-		FVector SpawnLocation = CameraLocation + (CameraForward * SpawnDistance);
+		FVector SpawnLocation = StrikeLocation + FVector(0.0f, 0.0f, LightningStrikeHeight);
+		FVector Direction = FVector(0.0f, 0.0f, -1.0f);
 
 		FActorSpawnParameters SpawnParams;
 		SpawnParams.Owner = Caster;
@@ -111,15 +113,26 @@ void ALightningSpell::Execute(AWizardCharacter* Caster)
 		if (ASpellProjectile* Projectile = GetWorld()->SpawnActor<ASpellProjectile>(
 			ProjectileClass,
 			SpawnLocation,
-			CameraForward.Rotation(),
+			Direction.Rotation(),
 			SpawnParams))
 		{
-			// Damage already applied via raycast/AOE
-			Projectile->InitializeProjectile(CameraForward, 0.0f);
+			// Damage already applied via raycast/AOE; this is visual-only
+			if (UProjectileMovementComponent* Movement = Projectile->FindComponentByClass<UProjectileMovementComponent>())
+			{
+				const float OriginalSpeed = Movement->InitialSpeed;
+				Movement->InitialSpeed = LightningStrikeSpeed;
+				Movement->MaxSpeed = LightningStrikeSpeed;
+				Projectile->InitializeProjectile(Direction, 0.0f);
+				// Restore configured speed for future use of this projectile class
+				Movement->InitialSpeed = OriginalSpeed;
+				Movement->MaxSpeed = OriginalSpeed;
+			}
+			else
+			{
+				Projectile->InitializeProjectile(Direction, 0.0f);
+			}
 		}
 	}
 
-	// Debug visualization
-	DrawDebugSphere(GetWorld(), StrikeLocation, AOERadius, 12, FColor::Yellow, false, 2.0f);
 }
 
