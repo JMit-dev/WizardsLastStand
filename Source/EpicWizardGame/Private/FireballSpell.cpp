@@ -8,7 +8,9 @@
 AFireballSpell::AFireballSpell()
 {
 	SpellName = "Fireball";
-	BaseDamage = 30.0f;
+	// Balanced for: 1-hit kill round 1 (150 HP), 4-5 hits round 10 (1050 HP)
+	// 220 damage = 1 hit @ 150 HP, ~5 hits @ 1050 HP
+	BaseDamage = 220.0f;
 	Cooldown = 0.5f;
 }
 

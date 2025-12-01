@@ -14,7 +14,9 @@
 AAirblastSpell::AAirblastSpell()
 {
 	SpellName = "Airblast";
-	BaseDamage = 5.0f;
+	// Medium damage with strong horizontal knockback
+	// ~5-6 hits to kill round 1, main purpose is crowd control
+	BaseDamage = 25.0f;
 	Cooldown = 1.5f;
 	ProjectileClass = AActor::StaticClass();
 }
@@ -110,9 +112,10 @@ void AAirblastSpell::Execute(AWizardCharacter* Caster)
 				FDamageEvent DamageEvent;
 				Zombie->TakeDamage(BaseDamage, DamageEvent, WizCaster->GetController(), Projectile);
 
-				// Apply knockback
+				// Apply horizontal knockback only (no vertical lift)
 				FVector KnockbackDirection = (Zombie->GetActorLocation() - Projectile->GetActorLocation()).GetSafeNormal();
-				KnockbackDirection.Z = 0.3f;
+				KnockbackDirection.Z = 0.0f; // Remove vertical component for pure horizontal push
+				KnockbackDirection.Normalize();
 
 				UCharacterMovementComponent* MovementComp = Zombie->GetCharacterMovement();
 				if (MovementComp)

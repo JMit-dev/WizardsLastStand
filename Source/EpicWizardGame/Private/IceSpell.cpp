@@ -12,8 +12,10 @@
 AIceSpell::AIceSpell()
 {
 	SpellName = "Ice Cone";
+	// Lower damage than fireball, focus on freeze/crowd control
+	// ~10-12 hits to kill round 1, main purpose is freeze
 	BaseDamage = 15.0f;
-	Cooldown = 2.0f;
+	Cooldown = 1.5f;
 }
 
 void AIceSpell::Execute(AWizardCharacter* Caster)
