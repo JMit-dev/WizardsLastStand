@@ -76,18 +76,6 @@ void AWaveManager::StartNextWave()
 	SpawnManager->TotalZombiesToSpawn = TotalZombiesThisWave;
 	SpawnManager->ZombieHealthOverride = CalculateZombieHealth(CurrentWave);
 
-	// Restore player health at start of each round
-	APawn* PlayerPawn = UGameplayStatics::GetPlayerPawn(this, 0);
-	if (PlayerPawn)
-	{
-		// Get max health (assuming 100 for 3-hit system with 33.33 damage per hit)
-		float MaxHealth = 100.0f;
-
-		// Apply healing to restore to full
-		UGameplayStatics::ApplyDamage(PlayerPawn, -MaxHealth, nullptr, nullptr, nullptr);
-		UE_LOG(LogTemp, Log, TEXT("WaveManager: Player health restored"));
-	}
-
 	// Start spawning
 	SpawnManager->StartSpawning();
 
@@ -148,7 +136,19 @@ void AWaveManager::OnWaveComplete()
 		SpawnManager->StopSpawning();
 	}
 
-	UE_LOG(LogTemp, Warning, TEXT("WaveManager: Wave %d complete! Starting break..."), CurrentWave);
+	// Restore player health at end of round (start of break)
+	APawn* PlayerPawn = UGameplayStatics::GetPlayerPawn(this, 0);
+	if (PlayerPawn)
+	{
+		// Get max health (assuming 100 for 3-hit system with 33.33 damage per hit)
+		float MaxHealth = 100.0f;
+
+		// Apply healing to restore to full
+		UGameplayStatics::ApplyDamage(PlayerPawn, -MaxHealth, nullptr, nullptr, nullptr);
+		UE_LOG(LogTemp, Log, TEXT("WaveManager: Player health restored"));
+	}
+
+	UE_LOG(LogTemp, Warning, TEXT("WaveManager: Round %d complete! Starting break..."), CurrentWave);
 
 	// Start wave break
 	StartWaveBreak();
