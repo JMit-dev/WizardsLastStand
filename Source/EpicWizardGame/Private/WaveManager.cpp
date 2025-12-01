@@ -28,6 +28,10 @@ void AWaveManager::BeginPlay()
 		return;
 	}
 
+	// Initialize money
+	PlayerMoney = StartingMoney;
+	UE_LOG(LogTemp, Log, TEXT("WaveManager: Starting money: $%d"), PlayerMoney);
+
 	// Find spawn manager
 	FindSpawnManager();
 
@@ -97,7 +101,13 @@ void AWaveManager::OnZombieDied()
 	if (bWaveActive)
 	{
 		ZombiesKilledThisWave++;
-		UE_LOG(LogTemp, Log, TEXT("WaveManager: Zombie killed. %d/%d"), ZombiesKilledThisWave, TotalZombiesThisWave);
+
+		// Award money for kill
+		int32 MoneyReward = CalculateMoneyReward();
+		AddMoney(MoneyReward);
+
+		UE_LOG(LogTemp, Log, TEXT("WaveManager: Zombie killed. %d/%d | +$%d (Total: $%d)"),
+			ZombiesKilledThisWave, TotalZombiesThisWave, MoneyReward, PlayerMoney);
 	}
 }
 
@@ -192,5 +202,43 @@ int32 AWaveManager::CalculateZombieCount(int32 RoundNumber) const
 
 	// Round to nearest integer
 	return FMath::RoundToInt(ZombieCount);
+}
+
+int32 AWaveManager::CalculateMoneyReward() const
+{
+	if (CurrentWave <= 0)
+	{
+		return BaseMoneyPerKill;
+	}
+
+	// Rounds 1-10: Static money reward
+	if (CurrentWave <= 10)
+	{
+		return BaseMoneyPerKill;
+	}
+
+	// Round 11+: Money increases by 15% per round
+	int32 RoundsAfter10 = CurrentWave - 10;
+	float MoneyReward = BaseMoneyPerKill * FMath::Pow(MoneyMultiplierAfterRound10, RoundsAfter10);
+
+	return FMath::RoundToInt(MoneyReward);
+}
+
+void AWaveManager::AddMoney(int32 Amount)
+{
+	PlayerMoney += Amount;
+}
+
+bool AWaveManager::SpendMoney(int32 Amount)
+{
+	if (PlayerMoney >= Amount)
+	{
+		PlayerMoney -= Amount;
+		UE_LOG(LogTemp, Log, TEXT("WaveManager: Spent $%d. Remaining: $%d"), Amount, PlayerMoney);
+		return true;
+	}
+
+	UE_LOG(LogTemp, Warning, TEXT("WaveManager: Not enough money! Need $%d, have $%d"), Amount, PlayerMoney);
+	return false;
 }
 

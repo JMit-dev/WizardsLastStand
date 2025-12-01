@@ -19,6 +19,10 @@ protected:
 	UPROPERTY(BlueprintReadOnly, Category="Wave System")
 	int32 CurrentWave = 0;
 
+	/** Player's current money */
+	UPROPERTY(BlueprintReadOnly, Category="Economy")
+	int32 PlayerMoney = 0;
+
 	/** Base number of zombies for wave 1 */
 	UPROPERTY(EditAnywhere, Category="Wave System")
 	int32 BaseZombiesPerWave = 5;
@@ -42,6 +46,18 @@ protected:
 	/** Health multiplier per round after round 10 (1.1 = 10% increase) */
 	UPROPERTY(EditAnywhere, Category="Wave System|Health")
 	float HealthMultiplierAfterRound10 = 1.1f;
+
+	/** Base money reward per zombie kill (rounds 1-10) */
+	UPROPERTY(EditAnywhere, Category="Economy")
+	int32 BaseMoneyPerKill = 60;
+
+	/** Money multiplier per round after round 10 */
+	UPROPERTY(EditAnywhere, Category="Economy")
+	float MoneyMultiplierAfterRound10 = 1.15f;
+
+	/** Starting money for the player */
+	UPROPERTY(EditAnywhere, Category="Economy")
+	int32 StartingMoney = 500;
 
 	/** Auto-start first wave on begin play */
 	UPROPERTY(EditAnywhere, Category="Wave System")
@@ -109,6 +125,22 @@ public:
 	/** Calculate zombie count for a given round */
 	UFUNCTION(BlueprintPure, Category="Wave System")
 	int32 CalculateZombieCount(int32 RoundNumber) const;
+
+	/** Calculate money reward for killing a zombie in current round */
+	UFUNCTION(BlueprintPure, Category="Economy")
+	int32 CalculateMoneyReward() const;
+
+	/** Add money to player */
+	UFUNCTION(BlueprintCallable, Category="Economy")
+	void AddMoney(int32 Amount);
+
+	/** Subtract money from player (returns true if successful) */
+	UFUNCTION(BlueprintCallable, Category="Economy")
+	bool SpendMoney(int32 Amount);
+
+	/** Get current player money */
+	UFUNCTION(BlueprintPure, Category="Economy")
+	int32 GetPlayerMoney() const { return PlayerMoney; }
 
 	/** Called when a zombie dies */
 	UFUNCTION()

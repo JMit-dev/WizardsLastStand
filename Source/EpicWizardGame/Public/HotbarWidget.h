@@ -120,6 +120,10 @@ public:
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Hotbar|Textures")
 	UTexture2D* StaffTexture;
 
+	/** Turret costs (Fire, Ice, Lightning, Air) */
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Hotbar|Economy")
+	TArray<int32> TurretCosts;
+
 	/** Preview turret actor (spawned when in turret mode) */
 	UPROPERTY(BlueprintReadOnly, Category="Hotbar|Preview")
 	ATurret* PreviewTurret;
@@ -183,6 +187,14 @@ public:
 	/** Place turret at world location */
 	UFUNCTION(BlueprintCallable, Category="Hotbar")
 	void PlaceTurret(int32 SlotIndex, const FVector& Location);
+
+	/** Get turret cost for a slot */
+	UFUNCTION(BlueprintPure, Category="Hotbar")
+	int32 GetTurretCost(int32 SlotIndex) const;
+
+	/** Check if player can afford turret in slot */
+	UFUNCTION(BlueprintPure, Category="Hotbar")
+	bool CanAffordTurret(int32 SlotIndex) const;
 
 	/** Blueprint event called when a slot should be used - implement in BP */
 	UFUNCTION(BlueprintImplementableEvent, Category="Hotbar")

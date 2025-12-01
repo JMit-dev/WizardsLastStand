@@ -7,6 +7,7 @@
 #include "Turret.h"
 #include "WizardCharacter.h"
 #include "WizardPlayerController.h"
+#include "WaveManager.h"
 #include "EngineUtils.h"
 #include "Kismet/GameplayStatics.h"
 #include "DrawDebugHelpers.h"
@@ -384,6 +385,34 @@ void UHotbarWidget::PlaceTurret(int32 SlotIndex, const FVector& Location)
 		return;
 	}
 
+	// Check if player can afford this turret
+	if (!CanAffordTurret(SlotIndex))
+	{
+		UE_LOG(LogTemp, Warning, TEXT("HotbarWidget: Cannot afford turret! Cost: $%d"), GetTurretCost(SlotIndex));
+		return;
+	}
+
+	// Find wave manager and spend money
+	AWaveManager* WaveManager = nullptr;
+	for (TActorIterator<AWaveManager> It(GetWorld()); It; ++It)
+	{
+		WaveManager = *It;
+		break;
+	}
+
+	if (!WaveManager)
+	{
+		UE_LOG(LogTemp, Warning, TEXT("HotbarWidget: No wave manager found!"));
+		return;
+	}
+
+	int32 TurretCost = GetTurretCost(SlotIndex);
+	if (!WaveManager->SpendMoney(TurretCost))
+	{
+		return; // Failed to spend money
+	}
+
+	// Spawn the turret
 	FActorSpawnParameters SpawnParams;
 	SpawnParams.SpawnCollisionHandlingOverride = ESpawnActorCollisionHandlingMethod::AdjustIfPossibleButAlwaysSpawn;
 
@@ -392,7 +421,8 @@ void UHotbarWidget::PlaceTurret(int32 SlotIndex, const FVector& Location)
 
 	if (Turret)
 	{
-		UE_LOG(LogTemp, Log, TEXT("HotbarWidget: Spawned turret of type %s"), *TurretClass->GetName());
+		UE_LOG(LogTemp, Log, TEXT("HotbarWidget: Spawned turret for $%d (Remaining: $%d)"),
+			TurretCost, WaveManager->GetPlayerMoney());
 	}
 }
 
@@ -594,5 +624,42 @@ void UHotbarWidget::DestroyPreviewTurret()
 		PreviewTurret = nullptr;
 		UE_LOG(LogTemp, Log, TEXT("HotbarWidget: Destroyed preview turret"));
 	}
+}
+
+int32 UHotbarWidget::GetTurretCost(int32 SlotIndex) const
+{
+	if (TurretCosts.IsValidIndex(SlotIndex))
+	{
+		return TurretCosts[SlotIndex];
+	}
+
+	// Default costs if not set: Ice=800, Fire=1000, Lightning=1500, Air=2000
+	switch (SlotIndex)
+	{
+		case 0: return 1000; // Fire
+		case 1: return 800;  // Ice
+		case 2: return 1500; // Lightning
+		case 3: return 2000; // Air
+		default: return 0;
+	}
+}
+
+bool UHotbarWidget::CanAffordTurret(int32 SlotIndex) const
+{
+	// Find wave manager
+	AWaveManager* WaveManager = nullptr;
+	for (TActorIterator<AWaveManager> It(GetWorld()); It; ++It)
+	{
+		WaveManager = *It;
+		break;
+	}
+
+	if (!WaveManager)
+	{
+		return false;
+	}
+
+	int32 TurretCost = GetTurretCost(SlotIndex);
+	return WaveManager->GetPlayerMoney() >= TurretCost;
 }
 
