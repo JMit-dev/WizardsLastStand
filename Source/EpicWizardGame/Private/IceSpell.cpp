@@ -27,15 +27,12 @@ void AIceSpell::Execute(AWizardCharacter* Caster)
 		return;
 	}
 
-	// Get camera forward vector
-	UCameraComponent* Camera = Caster->GetFirstPersonCamera();
-	if (!Camera)
+	FVector AimOrigin;
+	FVector AimDirection;
+	if (!Caster->GetAimData(AimOrigin, AimDirection))
 	{
 		return;
 	}
-
-	FVector CameraLocation = Camera->GetComponentLocation();
-	FVector CameraForward = Camera->GetForwardVector();
 
 	// Find all zombies in range
 	TArray<AActor*> FoundActors;
@@ -52,7 +49,7 @@ void AIceSpell::Execute(AWizardCharacter* Caster)
 		}
 
 		// Check if zombie is in range
-		FVector ToZombie = Zombie->GetActorLocation() - CameraLocation;
+		FVector ToZombie = Zombie->GetActorLocation() - AimOrigin;
 		float Distance = ToZombie.Size();
 
 		if (Distance > ConeRange)
@@ -62,7 +59,7 @@ void AIceSpell::Execute(AWizardCharacter* Caster)
 
 		// Check if zombie is in cone
 		ToZombie.Normalize();
-		float DotProduct = FVector::DotProduct(CameraForward, ToZombie);
+		float DotProduct = FVector::DotProduct(AimDirection, ToZombie);
 		float AngleRadians = FMath::Acos(DotProduct);
 		float AngleDegrees = FMath::RadiansToDegrees(AngleRadians);
 
@@ -102,7 +99,7 @@ void AIceSpell::Execute(AWizardCharacter* Caster)
 	// Spawn projectile visual (ice shard) similar to fireball flow
 	if (ProjectileClass)
 	{
-		FVector SpawnLocation = CameraLocation + (CameraForward * SpawnDistance);
+		FVector SpawnLocation = AimOrigin + (AimDirection * SpawnDistance);
 
 		FActorSpawnParameters SpawnParams;
 		SpawnParams.Owner = Caster;
@@ -111,11 +108,11 @@ void AIceSpell::Execute(AWizardCharacter* Caster)
 		if (ASpellProjectile* Projectile = GetWorld()->SpawnActor<ASpellProjectile>(
 			ProjectileClass,
 			SpawnLocation,
-			CameraForward.Rotation(),
+			AimDirection.Rotation(),
 			SpawnParams))
 		{
 			// Damage is already applied by the cone; projectile here is for visuals/FX
-			Projectile->InitializeProjectile(CameraForward, 0.0f);
+			Projectile->InitializeProjectile(AimDirection, 0.0f);
 		}
 	}
 }

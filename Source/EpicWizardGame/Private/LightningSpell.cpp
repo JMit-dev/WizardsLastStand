@@ -28,26 +28,23 @@ void ALightningSpell::Execute(AWizardCharacter* Caster)
 		return;
 	}
 
-	// Get camera forward vector
-	UCameraComponent* Camera = Caster->GetFirstPersonCamera();
-	if (!Camera)
+	FVector AimOrigin;
+	FVector AimDirection;
+	if (!Caster->GetAimData(AimOrigin, AimDirection))
 	{
 		return;
 	}
 
-	FVector CameraLocation = Camera->GetComponentLocation();
-	FVector CameraForward = Camera->GetForwardVector();
-
 	// Raycast forward to find a zombie
 	FHitResult HitResult;
-	FVector TraceEnd = CameraLocation + (CameraForward * RaycastRange);
+	FVector TraceEnd = AimOrigin + (AimDirection * RaycastRange);
 
 	FCollisionQueryParams QueryParams;
 	QueryParams.AddIgnoredActor(Caster);
 
 	bool bHit = GetWorld()->LineTraceSingleByChannel(
 		HitResult,
-		CameraLocation,
+		AimOrigin,
 		TraceEnd,
 		ECC_Pawn,
 		QueryParams

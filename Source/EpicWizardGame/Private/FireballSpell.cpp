@@ -25,19 +25,16 @@ void AFireballSpell::Execute(AWizardCharacter* Caster)
 		return;
 	}
 
-	// Get camera forward vector
-	UCameraComponent* Camera = Caster->GetFirstPersonCamera();
-	if (!Camera)
+	FVector AimOrigin;
+	FVector AimDirection;
+	if (!Caster->GetAimData(AimOrigin, AimDirection))
 	{
-		UE_LOG(LogTemp, Warning, TEXT("FireballSpell::Execute - No camera found!"));
+		UE_LOG(LogTemp, Warning, TEXT("FireballSpell::Execute - No aim data available!"));
 		return;
 	}
 
-	FVector CameraLocation = Camera->GetComponentLocation();
-	FVector CameraForward = Camera->GetForwardVector();
-
 	// Spawn location slightly in front of camera
-	FVector SpawnLocation = CameraLocation + (CameraForward * SpawnDistance);
+	FVector SpawnLocation = AimOrigin + (AimDirection * SpawnDistance);
 
 	// Spawn projectile
 	FActorSpawnParameters SpawnParams;
@@ -47,13 +44,13 @@ void AFireballSpell::Execute(AWizardCharacter* Caster)
 	ASpellProjectile* Projectile = GetWorld()->SpawnActor<ASpellProjectile>(
 		ProjectileClass,
 		SpawnLocation,
-		CameraForward.Rotation(),
+		AimDirection.Rotation(),
 		SpawnParams
 	);
 
 	if (Projectile)
 	{
-		Projectile->InitializeProjectile(CameraForward, BaseDamage);
+		Projectile->InitializeProjectile(AimDirection, BaseDamage);
 		UE_LOG(LogTemp, Log, TEXT("Fireball cast!"));
 	}
 }

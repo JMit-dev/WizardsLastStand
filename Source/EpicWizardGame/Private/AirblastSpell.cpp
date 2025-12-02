@@ -30,16 +30,14 @@ void AAirblastSpell::Execute(AWizardCharacter* Caster)
 		return;
 	}
 
-	// Get camera direction
-	UCameraComponent* Camera = Caster->GetFirstPersonCamera();
-	if (!Camera)
+	FVector AimOrigin;
+	FVector AimDirection;
+	if (!Caster->GetAimData(AimOrigin, AimDirection))
 	{
 		return;
 	}
 
-	FVector CameraLocation = Camera->GetComponentLocation();
-	FVector CameraForward = Camera->GetForwardVector();
-	FVector SpawnLocation = CameraLocation + (CameraForward * 100.0f);
+	FVector SpawnLocation = AimOrigin + (AimDirection * 100.0f);
 
 	if (!ProjectileClass)
 	{
@@ -48,7 +46,7 @@ void AAirblastSpell::Execute(AWizardCharacter* Caster)
 	}
 
 	// Spawn wide horizontal rectangle projectile (allows custom classes)
-	AActor* AirblastProjectile = GetWorld()->SpawnActor<AActor>(ProjectileClass, SpawnLocation, CameraForward.Rotation());
+	AActor* AirblastProjectile = GetWorld()->SpawnActor<AActor>(ProjectileClass, SpawnLocation, AimDirection.Rotation());
 	if (!AirblastProjectile)
 	{
 		return;
@@ -70,7 +68,7 @@ void AAirblastSpell::Execute(AWizardCharacter* Caster)
 	AirblastProjectile->SetLifeSpan(ProjectileLifetime);
 
 	// Store initial data for tick-based movement
-	FVector Velocity = CameraForward * ProjectileSpeed;
+	FVector Velocity = AimDirection * ProjectileSpeed;
 
 	// Lambda to handle movement and collision each tick
 	FTimerHandle TickTimer;

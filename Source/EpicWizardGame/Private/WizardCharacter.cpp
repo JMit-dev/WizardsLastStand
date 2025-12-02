@@ -11,10 +11,12 @@
 #include "Animation/AnimInstance.h"
 #include "Animation/AnimMontage.h"
 #include "GameFramework/CharacterMovementComponent.h"
+#include "GameFramework/SpringArmComponent.h"
 #include "WizardPlayerController.h"
 #include "HotbarWidget.h"
 #include "Kismet/GameplayStatics.h"
 #include "TimerManager.h"
+#include "Misc/PackageName.h"
 
 AWizardCharacter::AWizardCharacter()
 {
@@ -25,6 +27,23 @@ AWizardCharacter::AWizardCharacter()
 	FirstPersonCamera->SetupAttachment(GetCapsuleComponent());
 	FirstPersonCamera->SetRelativeLocation(FVector(-10.0f, 0.0f, 60.0f));
 	FirstPersonCamera->bUsePawnControlRotation = true;
+
+	// Create top-down camera rig (disabled by default)
+	TopDownSpringArm = CreateDefaultSubobject<USpringArmComponent>(TEXT("TopDownSpringArm"));
+	TopDownSpringArm->SetupAttachment(GetCapsuleComponent());
+	TopDownSpringArm->TargetArmLength = 900.0f;
+	TopDownSpringArm->SetRelativeRotation(FRotator(TopCameraAngle, 0.0f, 0.0f));
+	TopDownSpringArm->SetUsingAbsoluteRotation(true);
+	TopDownSpringArm->bUsePawnControlRotation = false;
+	TopDownSpringArm->bDoCollisionTest = true;
+	TopDownSpringArm->bInheritPitch = false;
+	TopDownSpringArm->bInheritYaw = false;
+	TopDownSpringArm->bInheritRoll = false;
+
+	TopDownCamera = CreateDefaultSubobject<UCameraComponent>(TEXT("TopDownCamera"));
+	TopDownCamera->SetupAttachment(TopDownSpringArm, USpringArmComponent::SocketName);
+	TopDownCamera->bUsePawnControlRotation = false;
+	TopDownCamera->SetActive(false);
 
 	// Create first person mesh (arms)
 	FirstPersonMesh = CreateDefaultSubobject<USkeletalMeshComponent>(TEXT("FirstPersonMesh"));
@@ -42,11 +61,21 @@ AWizardCharacter::AWizardCharacter()
 	GetMesh()->SetOwnerNoSee(true);
 }
 
+void AWizardCharacter::PostInitializeComponents()
+{
+	Super::PostInitializeComponents();
+
+	// Ensure HP is initialized even if Blueprint skips calling Super::BeginPlay
+	MaxHP = FMath::Max(MaxHP, 1.0f);
+	CurrentHP = MaxHP;
+}
+
 void AWizardCharacter::BeginPlay()
 {
 	Super::BeginPlay();
 
 	// Initialize HP
+	MaxHP = FMath::Max(MaxHP, 1.0f); // prevent zero/negative max that can break UI ratios
 	CurrentHP = MaxHP;
 
 	// Attach staff to socket
@@ -54,6 +83,9 @@ void AWizardCharacter::BeginPlay()
 	{
 		StaffMesh->AttachToComponent(FirstPersonMesh, FAttachmentTransformRules::SnapToTargetNotIncludingScale, StaffSocketName);
 	}
+
+	// Lock to top-down when on specific levels
+	TryActivateTopDownView();
 
 	// Add input mapping context
 	if (APlayerController* PlayerController = Cast<APlayerController>(Controller))
@@ -96,7 +128,9 @@ void AWizardCharacter::SetupPlayerInputComponent(UInputComponent* PlayerInputCom
 		// Cast spell (left click)
 		if (CastSpellAction)
 		{
+			// Fire immediately on press, and keep firing while held (cooldown-gated)
 			EnhancedInputComponent->BindAction(CastSpellAction, ETriggerEvent::Started, this, &AWizardCharacter::DoCastSpell);
+			EnhancedInputComponent->BindAction(CastSpellAction, ETriggerEvent::Triggered, this, &AWizardCharacter::DoCastSpell);
 		}
 
 		// Hotbar scroll (mouse wheel)
@@ -152,7 +186,30 @@ void AWizardCharacter::MoveInput(const FInputActionValue& Value)
 
 	if (Controller)
 	{
-		// Get forward and right vectors
+		if (bIsTopDownViewActive && TopDownCamera)
+		{
+			FVector ForwardDirection = TopDownCamera->GetForwardVector();
+			FVector RightDirection = TopDownCamera->GetRightVector();
+
+			ForwardDirection.Z = 0.0f;
+			RightDirection.Z = 0.0f;
+
+			if (!ForwardDirection.IsNearlyZero())
+			{
+				ForwardDirection.Normalize();
+			}
+
+			if (!RightDirection.IsNearlyZero())
+			{
+				RightDirection.Normalize();
+			}
+
+			AddMovementInput(ForwardDirection, MovementVector.Y);
+			AddMovementInput(RightDirection, MovementVector.X);
+			return;
+		}
+
+		// Get forward and right vectors (first-person)
 		const FRotator Rotation = Controller->GetControlRotation();
 		const FRotator YawRotation(0, Rotation.Yaw, 0);
 
@@ -168,6 +225,12 @@ void AWizardCharacter::MoveInput(const FInputActionValue& Value)
 void AWizardCharacter::LookInput(const FInputActionValue& Value)
 {
 	FVector2D LookAxisVector = Value.Get<FVector2D>();
+
+	if (bIsTopDownViewActive)
+	{
+		// Top-down camera is locked; ignore look input
+		return;
+	}
 
 	if (Controller)
 	{
@@ -242,6 +305,114 @@ void AWizardCharacter::DoCastSpell()
 void AWizardCharacter::OnCastMontageEnded(UAnimMontage* Montage, bool bInterrupted)
 {
 	bIsCasting = false;
+}
+
+bool AWizardCharacter::GetAimData(FVector& OutOrigin, FVector& OutDirection) const
+{
+	// Top-down: aim where the cursor points on the world, fire from the character
+	if (bIsTopDownViewActive)
+	{
+		FVector Origin = GetActorLocation();
+		Origin.Z += 50.0f; // raise slightly so projectiles don't spawn inside the ground
+
+		FVector Direction = GetActorForwardVector();
+
+		if (APlayerController* PC = Cast<APlayerController>(Controller))
+		{
+			FHitResult CursorHit;
+			if (PC->GetHitResultUnderCursor(ECC_Visibility, false, CursorHit))
+			{
+				FVector Target = CursorHit.ImpactPoint;
+				Target.Z = Origin.Z;
+				Direction = (Target - Origin).GetSafeNormal();
+			}
+		}
+
+		if (Direction.IsNearlyZero())
+		{
+			Direction = GetActorForwardVector();
+		}
+
+		OutOrigin = Origin;
+		OutDirection = Direction;
+		return true;
+	}
+
+	// First-person: use the first person camera
+	if (FirstPersonCamera)
+	{
+		OutOrigin = FirstPersonCamera->GetComponentLocation();
+		OutDirection = FirstPersonCamera->GetForwardVector();
+		return true;
+	}
+
+	return false;
+}
+
+void AWizardCharacter::TryActivateTopDownView()
+{
+	bIsTopDownViewActive = ShouldUseTopDownCamera();
+
+	if (!bIsTopDownViewActive)
+	{
+		// ensure first-person view is active by default
+		if (FirstPersonCamera)
+		{
+			FirstPersonCamera->SetActive(true);
+		}
+		if (TopDownCamera)
+		{
+			TopDownCamera->SetActive(false);
+		}
+		return;
+	}
+
+	// Enable top-down camera and disable first-person
+	if (TopDownCamera)
+	{
+		TopDownCamera->SetActive(true);
+	}
+	if (FirstPersonCamera)
+	{
+		FirstPersonCamera->SetActive(false);
+	}
+
+	// Show the full character model and hide first-person arms
+	GetMesh()->SetOwnerNoSee(false);
+	if (FirstPersonMesh)
+	{
+		FirstPersonMesh->SetHiddenInGame(true);
+	}
+
+	// Orient movement to direction instead of controller rotation
+	if (UCharacterMovementComponent* Movement = GetCharacterMovement())
+	{
+		Movement->bOrientRotationToMovement = true;
+		Movement->bUseControllerDesiredRotation = false;
+	}
+
+	// Disable controller rotation on the pawn
+	bUseControllerRotationYaw = false;
+	bUseControllerRotationPitch = false;
+	bUseControllerRotationRoll = false;
+
+	// Make sure we are the active view target
+	if (APlayerController* PC = Cast<APlayerController>(Controller))
+	{
+		PC->SetViewTarget(this);
+	}
+}
+
+bool AWizardCharacter::ShouldUseTopDownCamera() const
+{
+	if (const UWorld* World = GetWorld())
+	{
+		const FString MapName = FPackageName::GetShortName(World->GetMapName());
+		return MapName.Contains(TEXT("Courtyard"), ESearchCase::IgnoreCase)
+			|| MapName.Contains(TEXT("Rampart"), ESearchCase::IgnoreCase);
+	}
+
+	return false;
 }
 
 void AWizardCharacter::Die()

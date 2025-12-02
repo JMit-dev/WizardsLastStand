@@ -10,6 +10,7 @@ class UInputAction;
 class UInputMappingContext;
 class UCameraComponent;
 class UAnimMontage;
+class USpringArmComponent;
 
 UCLASS()
 class EPICWIZARDGAME_API AWizardCharacter : public ACharacter
@@ -19,6 +20,18 @@ class EPICWIZARDGAME_API AWizardCharacter : public ACharacter
 	/** First person camera */
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category="Components", meta=(AllowPrivateAccess="true"))
 	UCameraComponent* FirstPersonCamera;
+
+	/** Top-down spring arm for overhead camera */
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category="Components", meta=(AllowPrivateAccess="true"))
+	USpringArmComponent* TopDownSpringArm;
+
+	/** Top-down camera (overhead) */
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category="Components", meta=(AllowPrivateAccess="true"))
+	UCameraComponent* TopDownCamera;
+
+	/** Editable pitch for the top-down camera arm (degrees) */
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Camera", meta=(AllowPrivateAccess="true"))
+	float TopCameraAngle = -65.0f;
 
 	/** First person arms mesh */
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category="Components", meta=(AllowPrivateAccess="true"))
@@ -93,6 +106,9 @@ protected:
 	/** True if currently casting a spell (prevents animation cancelling) */
 	bool bIsCasting = false;
 
+	/** True when using the top-down view (courtyard/rampart levels) */
+	bool bIsTopDownViewActive = false;
+
 public:
 
 	AWizardCharacter();
@@ -100,6 +116,7 @@ public:
 protected:
 
 	virtual void BeginPlay() override;
+	virtual void PostInitializeComponents() override;
 
 	virtual void SetupPlayerInputComponent(class UInputComponent* PlayerInputComponent) override;
 
@@ -136,6 +153,9 @@ public:
 	UFUNCTION(BlueprintCallable, Category="Wizard")
 	float GetMaxHP() const { return MaxHP; }
 
+	/** Calculates the current aim origin/direction (handles top-down cursor aiming) */
+	bool GetAimData(FVector& OutOrigin, FVector& OutDirection) const;
+
 protected:
 
 	/** Movement input handler */
@@ -160,6 +180,12 @@ protected:
 
 	/** Called when HP is depleted */
 	void Die();
+
+	/** Switches cameras if we’re in a top-down level */
+	void TryActivateTopDownView();
+
+	/** Returns true if the current map should use the top-down camera */
+	bool ShouldUseTopDownCamera() const;
 
 	/** Blueprint event for spell cast effects */
 	UFUNCTION(BlueprintImplementableEvent, Category="Wizard", meta=(DisplayName="On Spell Cast"))
