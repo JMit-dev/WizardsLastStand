@@ -10,6 +10,7 @@ class UInputAction;
 class UInputMappingContext;
 class UCameraComponent;
 class UAnimMontage;
+class UAnimSequenceBase;
 class USpringArmComponent;
 
 UCLASS()
@@ -95,6 +96,18 @@ protected:
 	UPROPERTY(EditAnywhere, Category="Animations")
 	UAnimMontage* SpellCastMontage;
 
+	/** Walk loop animation (played when moving) */
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Animations")
+	UAnimSequenceBase* WalkAnimation;
+
+	/** Play rate for the walk loop */
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Animations", meta=(ClampMin="0.01", UIMin="0.1", UIMax="3.0"))
+	float WalkAnimPlayRate = 1.0f;
+
+	/** Minimum speed to count as walking */
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Animations", meta=(ClampMin="0.0"))
+	float WalkVelocityThreshold = 10.0f;
+
 	/** Max HP for the wizard */
 	UPROPERTY(EditAnywhere, Category="Health")
 	float MaxHP = 100.0f;
@@ -117,6 +130,7 @@ protected:
 
 	virtual void BeginPlay() override;
 	virtual void PostInitializeComponents() override;
+	virtual void Tick(float DeltaTime) override;
 
 	virtual void SetupPlayerInputComponent(class UInputComponent* PlayerInputComponent) override;
 
@@ -194,4 +208,22 @@ protected:
 	/** Blueprint event for death */
 	UFUNCTION(BlueprintImplementableEvent, Category="Wizard", meta=(DisplayName="On Death"))
 	void BP_OnDeath();
+
+private:
+	void UpdateMovementAnimation();
+
+	UPROPERTY(Transient)
+	UAnimMontage* WalkDynamicMontage = nullptr;
+
+	UPROPERTY(Transient)
+	bool bUsingSingleNodeWalk = false;
+
+	UPROPERTY(Transient)
+	TWeakObjectPtr<USkeletalMeshComponent> WalkSingleNodeMesh;
+
+	UPROPERTY(Transient)
+	TSubclassOf<UAnimInstance> SavedWalkAnimClass;
+
+	UPROPERTY(Transient)
+	TEnumAsByte<EAnimationMode::Type> SavedWalkAnimMode;
 };

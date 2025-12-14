@@ -10,6 +10,8 @@
 #include "InputActionValue.h"
 #include "Animation/AnimInstance.h"
 #include "Animation/AnimMontage.h"
+#include "Animation/AnimSequenceBase.h"
+#include "Animation/AnimSingleNodeInstance.h"
 #include "GameFramework/CharacterMovementComponent.h"
 #include "GameFramework/SpringArmComponent.h"
 #include "WizardPlayerController.h"
@@ -20,7 +22,7 @@
 
 AWizardCharacter::AWizardCharacter()
 {
-	PrimaryActorTick.bCanEverTick = false;
+	PrimaryActorTick.bCanEverTick = true;
 
 	// Create first person camera
 	FirstPersonCamera = CreateDefaultSubobject<UCameraComponent>(TEXT("FirstPersonCamera"));
@@ -98,6 +100,13 @@ void AWizardCharacter::BeginPlay()
 			}
 		}
 	}
+}
+
+void AWizardCharacter::Tick(float DeltaTime)
+{
+	Super::Tick(DeltaTime);
+
+	UpdateMovementAnimation();
 }
 
 void AWizardCharacter::SetupPlayerInputComponent(UInputComponent* PlayerInputComponent)
@@ -430,6 +439,92 @@ void AWizardCharacter::Die()
 	}, 2.0f, false);
 }
 
+void AWizardCharacter::UpdateMovementAnimation()
+{
+	// Drive locomotion on the main mesh; fall back to first-person mesh only if needed
+	USkeletalMeshComponent* MeshComp = GetMesh() ? GetMesh() : FirstPersonMesh;
+
+	if (!MeshComp)
+	{
+		return;
+	}
+
+	if (!WalkAnimation)
+	{
+		return;
+	}
+
+	// Stop walking when casting or dead
+	if (bIsCasting || CurrentHP <= 0.0f)
+	{
+		if (bUsingSingleNodeWalk)
+		{
+			if (USkeletalMeshComponent* WalkMesh = WalkSingleNodeMesh.Get())
+			{
+				WalkMesh->Stop();
+				if (SavedWalkAnimMode == EAnimationMode::AnimationBlueprint && SavedWalkAnimClass)
+				{
+					WalkMesh->SetAnimationMode(EAnimationMode::AnimationBlueprint);
+					WalkMesh->SetAnimInstanceClass(SavedWalkAnimClass);
+				}
+				else
+				{
+					WalkMesh->SetAnimationMode(SavedWalkAnimMode);
+				}
+			}
+			bUsingSingleNodeWalk = false;
+			WalkSingleNodeMesh = nullptr;
+			SavedWalkAnimClass = nullptr;
+		}
+		return;
+	}
+
+	// Determine if we should be playing the walk loop
+	bool bShouldPlayWalk = false;
+	if (UCharacterMovementComponent* MoveComp = GetCharacterMovement())
+	{
+		const FVector HorizontalVelocity = FVector(MoveComp->Velocity.X, MoveComp->Velocity.Y, 0.0f);
+		bShouldPlayWalk = HorizontalVelocity.SizeSquared() >= FMath::Square(WalkVelocityThreshold);
+	}
+
+	if (bShouldPlayWalk)
+	{
+		// Use single-node play (no slots required)
+		if (!bUsingSingleNodeWalk || WalkSingleNodeMesh.Get() != MeshComp)
+		{
+			SavedWalkAnimMode = MeshComp->GetAnimationMode();
+			SavedWalkAnimClass = MeshComp->GetAnimClass();
+			WalkSingleNodeMesh = MeshComp;
+			bUsingSingleNodeWalk = true;
+
+			MeshComp->PlayAnimation(WalkAnimation, true);
+		}
+
+		if (UAnimSingleNodeInstance* SingleNode = MeshComp->GetSingleNodeInstance())
+		{
+			SingleNode->SetPlayRate(WalkAnimPlayRate);
+		}
+	}
+	else if (bUsingSingleNodeWalk)
+	{
+		if (USkeletalMeshComponent* WalkMesh = WalkSingleNodeMesh.Get())
+		{
+			WalkMesh->Stop();
+			if (SavedWalkAnimMode == EAnimationMode::AnimationBlueprint && SavedWalkAnimClass)
+			{
+				WalkMesh->SetAnimationMode(EAnimationMode::AnimationBlueprint);
+				WalkMesh->SetAnimInstanceClass(SavedWalkAnimClass);
+			}
+			else
+			{
+				WalkMesh->SetAnimationMode(SavedWalkAnimMode);
+			}
+		}
+		bUsingSingleNodeWalk = false;
+		WalkSingleNodeMesh = nullptr;
+		SavedWalkAnimClass = nullptr;
+	}
+}
 void AWizardCharacter::HotbarScrollInput(const FInputActionValue& Value)
 {
 	float ScrollValue = Value.Get<float>();
