@@ -24,12 +24,16 @@ void ASpellBase::Execute(AWizardCharacter* Caster)
 
 	if (!CanCast())
 	{
-		UE_LOG(LogTemp, Warning, TEXT("SpellBase::Execute - Spell on cooldown!"));
+		const float Remaining = GetCooldownRemaining();
+		UE_LOG(LogTemp, Warning, TEXT("SpellBase::Execute - %s on cooldown (%.2fs remaining)"), *SpellName, Remaining);
 		return;
 	}
 
 	OwnerWizard = Caster;
 	StartCooldown();
+
+	const float Remaining = GetCooldownRemaining();
+	UE_LOG(LogTemp, Log, TEXT("SpellBase::Execute - %s cast. Next shot available in %.2fs"), *SpellName, Remaining);
 }
 
 bool ASpellBase::CanCast() const

@@ -11,7 +11,11 @@ class UInputMappingContext;
 class UCameraComponent;
 class UAnimMontage;
 class UAnimSequenceBase;
+class UAnimInstance;
+class USkeletalMeshComponent;
 class USpringArmComponent;
+
+DECLARE_DYNAMIC_MULTICAST_DELEGATE_TwoParams(FWizardHealthChangedSignature, float, CurrentHP, float, MaxHP);
 
 UCLASS()
 class EPICWIZARDGAME_API AWizardCharacter : public ACharacter
@@ -96,6 +100,14 @@ protected:
 	UPROPERTY(EditAnywhere, Category="Animations")
 	UAnimMontage* SpellCastMontage;
 
+	/** Spell cast animation sequence (fallback to use when no montage is provided) */
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Animations")
+	UAnimSequenceBase* SpellCastAnimation;
+
+	/** Play rate for spell cast sequence */
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Animations", meta=(ClampMin="0.01", UIMin="0.1", UIMax="3.0"))
+	float SpellCastAnimPlayRate = 1.0f;
+
 	/** Walk loop animation (played when moving) */
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Animations")
 	UAnimSequenceBase* WalkAnimation;
@@ -123,6 +135,10 @@ protected:
 	bool bIsTopDownViewActive = false;
 
 public:
+
+	/** Fired when the wizard's health changes */
+	UPROPERTY(BlueprintAssignable, Category="Wizard|Health")
+	FWizardHealthChangedSignature OnHealthChanged;
 
 	AWizardCharacter();
 
@@ -192,6 +208,9 @@ protected:
 	UFUNCTION()
 	void OnCastMontageEnded(UAnimMontage* Montage, bool bInterrupted);
 
+	/** Called when cast sequence ends */
+	void OnCastAnimationFinished();
+
 	/** Called when HP is depleted */
 	void Die();
 
@@ -226,4 +245,19 @@ private:
 
 	UPROPERTY(Transient)
 	TEnumAsByte<EAnimationMode::Type> SavedWalkAnimMode;
+
+	UPROPERTY(Transient)
+	bool bUsingCastSingleNode = false;
+
+	UPROPERTY(Transient)
+	TWeakObjectPtr<USkeletalMeshComponent> CastSingleNodeMesh;
+
+	UPROPERTY(Transient)
+	TSubclassOf<UAnimInstance> SavedCastAnimClass;
+
+	UPROPERTY(Transient)
+	TEnumAsByte<EAnimationMode::Type> SavedCastAnimMode;
+
+	UPROPERTY(Transient)
+	FTimerHandle CastAnimationTimer;
 };

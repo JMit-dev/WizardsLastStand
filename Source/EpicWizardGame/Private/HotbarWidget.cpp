@@ -156,7 +156,8 @@ void UHotbarWidget::UseCurrentSlot()
 		if (Spell && Spell->CanCast())
 		{
 			Spell->Execute(Wizard);
-			UE_LOG(LogTemp, Log, TEXT("HotbarWidget: Cast %s from slot %d"), *Spell->SpellName, CurrentSlotIndex + 1);
+			const float NextAvailable = Spell->GetCooldownRemaining();
+			UE_LOG(LogTemp, Log, TEXT("HotbarWidget: Cast %s from slot %d | Next shot in %.2fs"), *Spell->SpellName, CurrentSlotIndex + 1, NextAvailable);
 		}
 		else if (Spell)
 		{

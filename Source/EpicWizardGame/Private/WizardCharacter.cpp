@@ -12,6 +12,7 @@
 #include "Animation/AnimMontage.h"
 #include "Animation/AnimSequenceBase.h"
 #include "Animation/AnimSingleNodeInstance.h"
+#include "UObject/ConstructorHelpers.h"
 #include "GameFramework/CharacterMovementComponent.h"
 #include "GameFramework/SpringArmComponent.h"
 #include "WizardPlayerController.h"
@@ -61,6 +62,13 @@ AWizardCharacter::AWizardCharacter()
 
 	// Hide the default third person mesh in first person
 	GetMesh()->SetOwnerNoSee(true);
+
+	// Default to wizard cast animation sequence
+	static ConstructorHelpers::FObjectFinder<UAnimSequenceBase> WizardCastAsset(TEXT("/Game/WizardsLastStand/Assets/Characters/WizardCastSpell.WizardCastSpell"));
+	if (WizardCastAsset.Succeeded())
+	{
+		SpellCastAnimation = WizardCastAsset.Object;
+	}
 }
 
 void AWizardCharacter::PostInitializeComponents()
@@ -70,6 +78,7 @@ void AWizardCharacter::PostInitializeComponents()
 	// Ensure HP is initialized even if Blueprint skips calling Super::BeginPlay
 	MaxHP = FMath::Max(MaxHP, 1.0f);
 	CurrentHP = MaxHP;
+	OnHealthChanged.Broadcast(CurrentHP, MaxHP);
 }
 
 void AWizardCharacter::BeginPlay()
@@ -79,6 +88,7 @@ void AWizardCharacter::BeginPlay()
 	// Initialize HP
 	MaxHP = FMath::Max(MaxHP, 1.0f); // prevent zero/negative max that can break UI ratios
 	CurrentHP = MaxHP;
+	OnHealthChanged.Broadcast(CurrentHP, MaxHP);
 
 	// Attach staff to socket
 	if (StaffMesh && FirstPersonMesh)
@@ -180,6 +190,7 @@ float AWizardCharacter::TakeDamage(float Damage, struct FDamageEvent const& Dama
 	}
 
 	CurrentHP -= Damage;
+	OnHealthChanged.Broadcast(CurrentHP, MaxHP);
 
 	if (CurrentHP <= 0.0f)
 	{
@@ -270,49 +281,102 @@ void AWizardCharacter::DoCastSpell()
 		if (HotbarWidget)
 		{
 			HotbarWidget->UseCurrentSlot();
-			return;
 		}
 	}
 
-	// Fallback: If no montage, just trigger the spell effect
-	if (!SpellCastMontage)
+	// Fallback: If no montage or sequence, just trigger the spell effect
+	if (!SpellCastMontage && !SpellCastAnimation)
 	{
 		BP_OnSpellCast();
 		return;
 	}
 
-	// Get anim instance
-	UAnimInstance* AnimInstance = FirstPersonMesh->GetAnimInstance();
-	if (!AnimInstance)
+	USkeletalMeshComponent* MeshComp = nullptr;
+	if (bIsTopDownViewActive && GetMesh())
 	{
-		BP_OnSpellCast();
-		return;
-	}
-
-	// Set casting flag
-	bIsCasting = true;
-
-	// Play the montage
-	float MontageLength = AnimInstance->Montage_Play(SpellCastMontage);
-
-	if (MontageLength > 0.0f)
-	{
-		// Bind to montage end
-		FOnMontageEnded EndDelegate;
-		EndDelegate.BindUObject(this, &AWizardCharacter::OnCastMontageEnded);
-		AnimInstance->Montage_SetEndDelegate(EndDelegate, SpellCastMontage);
-
-		// Trigger spell effect
-		BP_OnSpellCast();
+		MeshComp = GetMesh(); // visible in top-down
 	}
 	else
 	{
-		bIsCasting = false;
+		MeshComp = FirstPersonMesh ? FirstPersonMesh : GetMesh();
 	}
+	UAnimInstance* AnimInstance = MeshComp ? MeshComp->GetAnimInstance() : nullptr;
+
+	// Use montage if provided, otherwise fall back to single-node animation sequence
+	if (SpellCastMontage && AnimInstance)
+	{
+		bIsCasting = true;
+
+		float MontageLength = AnimInstance->Montage_Play(SpellCastMontage);
+
+		if (MontageLength > 0.0f)
+		{
+			FOnMontageEnded EndDelegate;
+			EndDelegate.BindUObject(this, &AWizardCharacter::OnCastMontageEnded);
+			AnimInstance->Montage_SetEndDelegate(EndDelegate, SpellCastMontage);
+		}
+		else
+		{
+			bIsCasting = false;
+		}
+	}
+	else if (SpellCastAnimation && MeshComp)
+	{
+		bIsCasting = true;
+
+		SavedCastAnimMode = MeshComp->GetAnimationMode();
+		SavedCastAnimClass = MeshComp->GetAnimClass();
+		CastSingleNodeMesh = MeshComp;
+		bUsingCastSingleNode = true;
+
+		MeshComp->PlayAnimation(SpellCastAnimation, false);
+
+		if (UAnimSingleNodeInstance* SingleNode = MeshComp->GetSingleNodeInstance())
+		{
+			SingleNode->SetPlayRate(SpellCastAnimPlayRate);
+			const float Duration = SingleNode->GetLength() / FMath::Max(SpellCastAnimPlayRate, KINDA_SMALL_NUMBER);
+			GetWorld()->GetTimerManager().ClearTimer(CastAnimationTimer);
+			GetWorld()->GetTimerManager().SetTimer(CastAnimationTimer, this, &AWizardCharacter::OnCastAnimationFinished, Duration, false);
+		}
+		else
+		{
+			OnCastAnimationFinished();
+		}
+	}
+
+	// Trigger spell effect
+	BP_OnSpellCast();
 }
 
 void AWizardCharacter::OnCastMontageEnded(UAnimMontage* Montage, bool bInterrupted)
 {
+	bIsCasting = false;
+}
+
+void AWizardCharacter::OnCastAnimationFinished()
+{
+	GetWorld()->GetTimerManager().ClearTimer(CastAnimationTimer);
+
+	if (bUsingCastSingleNode)
+	{
+		if (USkeletalMeshComponent* CastMesh = CastSingleNodeMesh.Get())
+		{
+			CastMesh->Stop();
+			if (SavedCastAnimMode == EAnimationMode::AnimationBlueprint && SavedCastAnimClass)
+			{
+				CastMesh->SetAnimationMode(EAnimationMode::AnimationBlueprint);
+				CastMesh->SetAnimInstanceClass(SavedCastAnimClass);
+			}
+			else
+			{
+				CastMesh->SetAnimationMode(SavedCastAnimMode);
+			}
+		}
+		bUsingCastSingleNode = false;
+		CastSingleNodeMesh = nullptr;
+		SavedCastAnimClass = nullptr;
+	}
+
 	bIsCasting = false;
 }
 
@@ -429,6 +493,8 @@ void AWizardCharacter::Die()
 	bIsCasting = false;
 	DisableInput(nullptr);
 	GetCharacterMovement()->StopMovementImmediately();
+	GetWorld()->GetTimerManager().ClearTimer(CastAnimationTimer);
+	OnCastAnimationFinished();
 	BP_OnDeath();
 
 	// Return to title screen after a short delay
