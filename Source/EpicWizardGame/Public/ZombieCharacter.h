@@ -7,6 +7,9 @@
 #include "ZombieCharacter.generated.h"
 
 class UAnimMontage;
+class UAnimSequenceBase;
+class UAnimInstance;
+class USkeletalMeshComponent;
 class UWidgetComponent;
 
 DECLARE_DYNAMIC_MULTICAST_DELEGATE(FZombieDeathDelegate);
@@ -35,6 +38,18 @@ protected:
 	/** Attack animation montage */
 	UPROPERTY(EditAnywhere, Category="Animations")
 	UAnimMontage* AttackMontage;
+
+	/** Walk loop animation (played when moving) */
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Animations")
+	UAnimSequenceBase* WalkAnimation;
+
+	/** Play rate for the walk loop */
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Animations", meta=(ClampMin="0.01", UIMin="0.1", UIMax="3.0"))
+	float WalkAnimPlayRate = 1.0f;
+
+	/** Minimum speed to count as walking */
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Animations", meta=(ClampMin="0.0"))
+	float WalkVelocityThreshold = 10.0f;
 
 	/** Damage dealt per attack (33.33 for 3-hit kill with 100HP) */
 	UPROPERTY(EditAnywhere, Category="Combat")
@@ -75,6 +90,8 @@ protected:
 	virtual void BeginPlay() override;
 
 	virtual void EndPlay(const EEndPlayReason::Type EndPlayReason) override;
+
+	virtual void Tick(float DeltaTime) override;
 
 public:
 
@@ -118,4 +135,19 @@ protected:
 	/** Blueprint event for death */
 	UFUNCTION(BlueprintImplementableEvent, Category="Zombie", meta=(DisplayName="On Death"))
 	void BP_OnDeath();
+
+private:
+	void UpdateMovementAnimation();
+
+	UPROPERTY(Transient)
+	bool bUsingSingleNodeWalk = false;
+
+	UPROPERTY(Transient)
+	TWeakObjectPtr<USkeletalMeshComponent> WalkSingleNodeMesh;
+
+	UPROPERTY(Transient)
+	TSubclassOf<UAnimInstance> SavedWalkAnimClass;
+
+	UPROPERTY(Transient)
+	TEnumAsByte<EAnimationMode::Type> SavedWalkAnimMode;
 };

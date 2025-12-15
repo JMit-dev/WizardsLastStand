@@ -4,17 +4,23 @@
 #include "Tower.h"
 #include "Animation/AnimInstance.h"
 #include "Animation/AnimMontage.h"
+#include "Animation/AnimSequenceBase.h"
+#include "Animation/AnimSingleNodeInstance.h"
+#include "Math/UnrealMathUtility.h"
 #include "GameFramework/CharacterMovementComponent.h"
+#include "Components/SkeletalMeshComponent.h"
 #include "Components/CapsuleComponent.h"
 #include "Components/WidgetComponent.h"
 #include "Engine/World.h"
 #include "TimerManager.h"
 #include "Kismet/GameplayStatics.h"
 #include "EngineUtils.h"
+#include "UObject/ConstructorHelpers.h"
 
 AZombieCharacter::AZombieCharacter()
 {
-	PrimaryActorTick.bCanEverTick = false;
+	PrimaryActorTick.bCanEverTick = true;
+	PrimaryActorTick.bStartWithTickEnabled = true;
 
 	// AI controlled
 	AutoPossessAI = EAutoPossessAI::PlacedInWorldOrSpawned;
@@ -28,6 +34,13 @@ AZombieCharacter::AZombieCharacter()
 
 	// Make zombies slower
 	GetCharacterMovement()->MaxWalkSpeed = 200.0f; // Default is usually 600
+
+	// Default to the zombie-specific walk animation
+	static ConstructorHelpers::FObjectFinder<UAnimSequenceBase> ZombieWalkAsset(TEXT("/Game/WizardsLastStand/Assets/Characters/ZombieWalk.ZombieWalk"));
+	if (ZombieWalkAsset.Succeeded())
+	{
+		WalkAnimation = ZombieWalkAsset.Object;
+	}
 }
 
 void AZombieCharacter::BeginPlay()
@@ -55,6 +68,13 @@ void AZombieCharacter::EndPlay(const EEndPlayReason::Type EndPlayReason)
 
 	// Clear timers
 	GetWorld()->GetTimerManager().ClearTimer(DeathTimer);
+}
+
+void AZombieCharacter::Tick(float DeltaTime)
+{
+	Super::Tick(DeltaTime);
+
+	UpdateMovementAnimation();
 }
 
 float AZombieCharacter::TakeDamage(float Damage, struct FDamageEvent const& DamageEvent, AController* EventInstigator, AActor* DamageCauser)
@@ -217,3 +237,80 @@ void AZombieCharacter::DeferredDestruction()
 	Destroy();
 }
 
+void AZombieCharacter::UpdateMovementAnimation()
+{
+	USkeletalMeshComponent* MeshComp = GetMesh();
+	if (!MeshComp || !WalkAnimation)
+	{
+		return;
+	}
+
+	// Stop walking when attacking or dead
+	if (bIsAttacking || bIsDead)
+	{
+		if (bUsingSingleNodeWalk)
+		{
+			if (USkeletalMeshComponent* WalkMesh = WalkSingleNodeMesh.Get())
+			{
+				WalkMesh->Stop();
+				if (SavedWalkAnimMode == EAnimationMode::AnimationBlueprint && SavedWalkAnimClass)
+				{
+					WalkMesh->SetAnimationMode(EAnimationMode::AnimationBlueprint);
+					WalkMesh->SetAnimInstanceClass(SavedWalkAnimClass);
+				}
+				else
+				{
+					WalkMesh->SetAnimationMode(SavedWalkAnimMode);
+				}
+			}
+			bUsingSingleNodeWalk = false;
+			WalkSingleNodeMesh = nullptr;
+			SavedWalkAnimClass = nullptr;
+		}
+		return;
+	}
+
+	bool bShouldPlayWalk = false;
+	if (UCharacterMovementComponent* MoveComp = GetCharacterMovement())
+	{
+		const FVector HorizontalVelocity = FVector(MoveComp->Velocity.X, MoveComp->Velocity.Y, 0.0f);
+		bShouldPlayWalk = HorizontalVelocity.SizeSquared() >= FMath::Square(WalkVelocityThreshold);
+	}
+
+	if (bShouldPlayWalk)
+	{
+		if (!bUsingSingleNodeWalk || WalkSingleNodeMesh.Get() != MeshComp)
+		{
+			SavedWalkAnimMode = MeshComp->GetAnimationMode();
+			SavedWalkAnimClass = MeshComp->GetAnimClass();
+			WalkSingleNodeMesh = MeshComp;
+			bUsingSingleNodeWalk = true;
+
+			MeshComp->PlayAnimation(WalkAnimation, true);
+		}
+
+		if (UAnimSingleNodeInstance* SingleNode = MeshComp->GetSingleNodeInstance())
+		{
+			SingleNode->SetPlayRate(WalkAnimPlayRate);
+		}
+	}
+	else if (bUsingSingleNodeWalk)
+	{
+		if (USkeletalMeshComponent* WalkMesh = WalkSingleNodeMesh.Get())
+		{
+			WalkMesh->Stop();
+			if (SavedWalkAnimMode == EAnimationMode::AnimationBlueprint && SavedWalkAnimClass)
+			{
+				WalkMesh->SetAnimationMode(EAnimationMode::AnimationBlueprint);
+				WalkMesh->SetAnimInstanceClass(SavedWalkAnimClass);
+			}
+			else
+			{
+				WalkMesh->SetAnimationMode(SavedWalkAnimMode);
+			}
+		}
+		bUsingSingleNodeWalk = false;
+		WalkSingleNodeMesh = nullptr;
+		SavedWalkAnimClass = nullptr;
+	}
+}
