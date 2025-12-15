@@ -2,6 +2,7 @@
 
 #include "Tower.h"
 #include "Components/WidgetComponent.h"
+#include "Components/BoxComponent.h"
 #include "Kismet/GameplayStatics.h"
 #include "TimerManager.h"
 
@@ -14,6 +15,14 @@ ATower::ATower()
 	// Create and attach the mesh
 	TowerMesh = CreateDefaultSubobject<UStaticMeshComponent>(TEXT("TowerMesh"));
 	RootComponent = TowerMesh;
+
+	// Create collision box for zombie attacks - large enough to cover the tower
+	AttackCollision = CreateDefaultSubobject<UBoxComponent>(TEXT("AttackCollision"));
+	AttackCollision->SetupAttachment(RootComponent);
+	AttackCollision->SetBoxExtent(FVector(200.0f, 200.0f, 400.0f)); // Default size, can be adjusted in editor
+	AttackCollision->SetCollisionEnabled(ECollisionEnabled::QueryOnly);
+	AttackCollision->SetCollisionResponseToAllChannels(ECollisionResponse::ECR_Ignore);
+	AttackCollision->SetCollisionResponseToChannel(ECollisionChannel::ECC_Pawn, ECollisionResponse::ECR_Overlap);
 
 	// Create floating health bar widget
 	HealthBarWidget = CreateDefaultSubobject<UWidgetComponent>(TEXT("HealthBarWidget"));

@@ -7,6 +7,7 @@
 #include "Engine/World.h"
 #include "TimerManager.h"
 #include "Navigation/PathFollowingComponent.h"
+#include "NavigationSystem.h"
 #include "EngineUtils.h"
 
 AZombieAIController::AZombieAIController()
@@ -53,55 +54,139 @@ void AZombieAIController::UpdateAI()
 	}
 
 	FVector ZombieLocation = GetPawn()->GetActorLocation();
-	AActor* NearestTarget = nullptr;
-	float NearestDistance = FLT_MAX;
+	AActor* BestTarget = nullptr;
+	float BestTargetScore = -FLT_MAX;
+
+	// Find the best target based on path distance and reachability
+	// Score is calculated as: 1000 / (PathDistance + 1) - higher score = better target
 
 	// Check player
 	APawn* PlayerPawn = UGameplayStatics::GetPlayerPawn(this, 0);
 	if (PlayerPawn)
 	{
-		float PlayerDistance = FVector::Dist(ZombieLocation, PlayerPawn->GetActorLocation());
-		if (PlayerDistance < NearestDistance)
+		// Get PATH distance (not straight line distance)
+		float PathDistance = -1.0f;
+		FPathFindingQuery Query;
+		if (UPathFollowingComponent* PathComp = GetPathFollowingComponent())
 		{
-			NearestDistance = PlayerDistance;
-			NearestTarget = PlayerPawn;
+			// Check if we can path to the player
+			UNavigationSystemV1* NavSys = UNavigationSystemV1::GetCurrent(GetWorld());
+			if (NavSys)
+			{
+				FPathFindingQuery PathQuery(this, *NavSys->GetDefaultNavDataInstance(), ZombieLocation, PlayerPawn->GetActorLocation());
+				FPathFindingResult Result = NavSys->FindPathSync(PathQuery);
+
+				if (Result.IsSuccessful() && Result.Path.IsValid())
+				{
+					PathDistance = Result.Path->GetLength();
+				}
+			}
+		}
+
+		// If we can path to player, score it
+		if (PathDistance > 0.0f)
+		{
+			float Score = 1000.0f / (PathDistance + 1.0f);
+			if (Score > BestTargetScore)
+			{
+				BestTargetScore = Score;
+				BestTarget = PlayerPawn;
+			}
 		}
 	}
 
-	// Check all towers
+	// Check all towers - prioritize towers heavily if player is unreachable
 	for (TActorIterator<ATower> It(GetWorld()); It; ++It)
 	{
 		ATower* Tower = *It;
 		if (Tower && !Tower->IsDestroyed())
 		{
-			float TowerDistance = FVector::Dist(ZombieLocation, Tower->GetActorLocation());
-			if (TowerDistance < NearestDistance)
+			// Get PATH distance to tower
+			float PathDistance = -1.0f;
+			if (UPathFollowingComponent* PathComp = GetPathFollowingComponent())
 			{
-				NearestDistance = TowerDistance;
-				NearestTarget = Tower;
+				UNavigationSystemV1* NavSys = UNavigationSystemV1::GetCurrent(GetWorld());
+				if (NavSys)
+				{
+					FPathFindingQuery PathQuery(this, *NavSys->GetDefaultNavDataInstance(), ZombieLocation, Tower->GetActorLocation());
+					FPathFindingResult Result = NavSys->FindPathSync(PathQuery);
+
+					if (Result.IsSuccessful() && Result.Path.IsValid())
+					{
+						PathDistance = Result.Path->GetLength();
+					}
+				}
+			}
+
+			// If we can path to tower, score it (towers get bonus priority)
+			if (PathDistance > 0.0f)
+			{
+				// Give towers a 2x multiplier to prefer them when equally accessible
+				float Score = 2000.0f / (PathDistance + 1.0f);
+				if (Score > BestTargetScore)
+				{
+					BestTargetScore = Score;
+					BestTarget = Tower;
+				}
+			}
+		}
+	}
+
+	// Fallback: if no pathable target, just use nearest by straight distance
+	if (!BestTarget)
+	{
+		float NearestDistance = FLT_MAX;
+
+		if (PlayerPawn)
+		{
+			float PlayerDistance = FVector::Dist(ZombieLocation, PlayerPawn->GetActorLocation());
+			if (PlayerDistance < NearestDistance)
+			{
+				NearestDistance = PlayerDistance;
+				BestTarget = PlayerPawn;
+			}
+		}
+
+		for (TActorIterator<ATower> It(GetWorld()); It; ++It)
+		{
+			ATower* Tower = *It;
+			if (Tower && !Tower->IsDestroyed())
+			{
+				float TowerDistance = FVector::Dist(ZombieLocation, Tower->GetActorLocation());
+				if (TowerDistance < NearestDistance)
+				{
+					NearestDistance = TowerDistance;
+					BestTarget = Tower;
+				}
 			}
 		}
 	}
 
 	// If no valid target found, do nothing
-	if (!NearestTarget)
+	if (!BestTarget)
 	{
 		return;
 	}
 
-	// Check if in attack range (use different ranges for player vs tower)
+	// Check if in attack range
+	float DistanceToTarget = FVector::Dist(ZombieLocation, BestTarget->GetActorLocation());
 	bool bInAttackRange = false;
-	ATower* TargetTower = Cast<ATower>(NearestTarget);
+	ATower* TargetTower = Cast<ATower>(BestTarget);
 
 	if (TargetTower)
 	{
-		// Use larger attack distance for towers
-		bInAttackRange = (NearestDistance <= 300.0f);
+		// For towers, also check overlap (in case tower is vertically stretched)
+		TArray<AActor*> OverlappingActors;
+		ZombieCharacter->GetOverlappingActors(OverlappingActors, ATower::StaticClass());
+		bool bIsOverlapping = OverlappingActors.Contains(TargetTower);
+
+		// In range if either overlapping OR within distance
+		bInAttackRange = bIsOverlapping || (DistanceToTarget <= 300.0f);
 	}
 	else
 	{
 		// Use normal attack distance for player
-		bInAttackRange = (NearestDistance <= AttackDistance);
+		bInAttackRange = (DistanceToTarget <= AttackDistance);
 	}
 
 	if (bInAttackRange)
@@ -110,7 +195,7 @@ void AZombieAIController::UpdateAI()
 		StopMovement();
 
 		// Face the target
-		FVector Direction = NearestTarget->GetActorLocation() - ZombieLocation;
+		FVector Direction = BestTarget->GetActorLocation() - ZombieLocation;
 		Direction.Z = 0.0f;
 		if (!Direction.IsNearlyZero())
 		{
@@ -125,8 +210,8 @@ void AZombieAIController::UpdateAI()
 	}
 	else
 	{
-		// Move towards nearest target
-		MoveToActor(NearestTarget, AcceptanceRadius);
+		// Move towards best target
+		MoveToActor(BestTarget, AcceptanceRadius);
 	}
 }
 

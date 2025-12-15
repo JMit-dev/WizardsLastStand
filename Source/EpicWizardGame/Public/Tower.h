@@ -7,6 +7,7 @@
 #include "Tower.generated.h"
 
 class UWidgetComponent;
+class UBoxComponent;
 
 DECLARE_DYNAMIC_MULTICAST_DELEGATE(FTowerDestroyedDelegate);
 
@@ -20,6 +21,10 @@ protected:
 	/** Floating health bar widget */
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category="Components")
 	UWidgetComponent* HealthBarWidget;
+
+	/** Collision box for zombie attacks */
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category="Components")
+	UBoxComponent* AttackCollision;
 
 	/** Max HP for the tower */
 	UPROPERTY(EditAnywhere, Category="Health")

@@ -248,17 +248,28 @@ void AZombieCharacter::ApplyAttackDamage()
 		}
 	}
 
-	// Check all towers (use TowerAttackRange for towers, which can be larger)
+	// Check all towers using collision overlap instead of distance
+	// This allows zombies to damage vertically stretched towers
 	for (TActorIterator<ATower> It(GetWorld()); It; ++It)
 	{
 		ATower* Tower = *It;
 		if (Tower && !Tower->IsDestroyed())
 		{
-			float TowerDistance = FVector::Dist(ZombieLocation, Tower->GetActorLocation());
-			if (TowerDistance < NearestDistance && TowerDistance <= TowerAttackRange)
+			// Check if zombie's capsule is overlapping with the tower's attack collision
+			TArray<AActor*> OverlappingActors;
+			GetOverlappingActors(OverlappingActors, ATower::StaticClass());
+
+			bool bIsOverlapping = OverlappingActors.Contains(Tower);
+
+			if (bIsOverlapping)
 			{
-				NearestDistance = TowerDistance;
-				NearestTarget = Tower;
+				// Prioritize tower if we're overlapping with it
+				float TowerDistance = FVector::Dist(ZombieLocation, Tower->GetActorLocation());
+				if (TowerDistance < NearestDistance)
+				{
+					NearestDistance = TowerDistance;
+					NearestTarget = Tower;
+				}
 			}
 		}
 	}
@@ -282,7 +293,7 @@ void AZombieCharacter::ApplyAttackDamage()
 	}
 	else
 	{
-		UE_LOG(LogTemp, Log, TEXT("Zombie has no target in range (AttackRange: %f, TowerAttackRange: %f)"), AttackRange, TowerAttackRange);
+		UE_LOG(LogTemp, Log, TEXT("Zombie has no target in range (AttackRange: %f)"), AttackRange);
 	}
 }
 
