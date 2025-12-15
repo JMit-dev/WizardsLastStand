@@ -39,6 +39,14 @@ protected:
 	UPROPERTY(EditAnywhere, Category="Animations")
 	UAnimMontage* AttackMontage;
 
+	/** Attack animation sequence (alternative to montage) */
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Animations")
+	UAnimSequenceBase* AttackAnimation;
+
+	/** Play rate for the attack animation sequence */
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Animations", meta=(ClampMin="0.01", UIMin="0.1", UIMax="3.0"))
+	float AttackAnimPlayRate = 1.0f;
+
 	/** Walk loop animation (played when moving) */
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Animations")
 	UAnimSequenceBase* WalkAnimation;
@@ -119,6 +127,9 @@ protected:
 	UFUNCTION()
 	void OnAttackMontageEnded(UAnimMontage* Montage, bool bInterrupted);
 
+	/** Called when attack animation sequence finishes */
+	void OnAttackAnimationFinished();
+
 	/** Apply damage to target in range */
 	void ApplyAttackDamage();
 
@@ -150,4 +161,19 @@ private:
 
 	UPROPERTY(Transient)
 	TEnumAsByte<EAnimationMode::Type> SavedWalkAnimMode;
+
+	UPROPERTY(Transient)
+	bool bUsingAttackSingleNode = false;
+
+	UPROPERTY(Transient)
+	TWeakObjectPtr<USkeletalMeshComponent> AttackSingleNodeMesh;
+
+	UPROPERTY(Transient)
+	TSubclassOf<UAnimInstance> SavedAttackAnimClass;
+
+	UPROPERTY(Transient)
+	TEnumAsByte<EAnimationMode::Type> SavedAttackAnimMode;
+
+	UPROPERTY(Transient)
+	FTimerHandle AttackAnimationTimer;
 };

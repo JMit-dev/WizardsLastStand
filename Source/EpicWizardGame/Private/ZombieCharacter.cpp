@@ -41,6 +41,13 @@ AZombieCharacter::AZombieCharacter()
 	{
 		WalkAnimation = ZombieWalkAsset.Object;
 	}
+
+	// Default to the zombie-specific attack animation
+	static ConstructorHelpers::FObjectFinder<UAnimSequenceBase> ZombieAttackAsset(TEXT("/Game/WizardsLastStand/Assets/Characters/ZombieAttack.ZombieAttack"));
+	if (ZombieAttackAsset.Succeeded())
+	{
+		AttackAnimation = ZombieAttackAsset.Object;
+	}
 }
 
 void AZombieCharacter::BeginPlay()
@@ -68,6 +75,7 @@ void AZombieCharacter::EndPlay(const EEndPlayReason::Type EndPlayReason)
 
 	// Clear timers
 	GetWorld()->GetTimerManager().ClearTimer(DeathTimer);
+	GetWorld()->GetTimerManager().ClearTimer(AttackAnimationTimer);
 }
 
 void AZombieCharacter::Tick(float DeltaTime)
@@ -103,47 +111,115 @@ void AZombieCharacter::DoAttack()
 	}
 
 	// If no montage, just apply damage
-	if (!AttackMontage)
+	if (!AttackMontage && !AttackAnimation)
 	{
 		ApplyAttackDamage();
 		BP_OnAttack();
 		return;
 	}
 
-	// Get anim instance
-	UAnimInstance* AnimInstance = GetMesh()->GetAnimInstance();
-	if (!AnimInstance)
+	USkeletalMeshComponent* MeshComp = GetMesh();
+	UAnimInstance* AnimInstance = MeshComp ? MeshComp->GetAnimInstance() : nullptr;
+
+	// Use montage if provided, otherwise fall back to single-node animation
+	if (AttackMontage && AnimInstance)
 	{
-		ApplyAttackDamage();
-		BP_OnAttack();
-		return;
+		bIsAttacking = true;
+
+		// Play attack montage
+		float MontageLength = AnimInstance->Montage_Play(AttackMontage);
+
+		if (MontageLength > 0.0f)
+		{
+			// Bind to montage end
+			FOnMontageEnded EndDelegate;
+			EndDelegate.BindUObject(this, &AZombieCharacter::OnAttackMontageEnded);
+			AnimInstance->Montage_SetEndDelegate(EndDelegate, AttackMontage);
+		}
+		else
+		{
+			bIsAttacking = false;
+		}
+	}
+	else if (AttackAnimation && MeshComp)
+	{
+		bIsAttacking = true;
+
+		// Stop walk loop while attacking
+		if (bUsingSingleNodeWalk)
+		{
+			if (USkeletalMeshComponent* WalkMesh = WalkSingleNodeMesh.Get())
+			{
+				WalkMesh->Stop();
+				if (SavedWalkAnimMode == EAnimationMode::AnimationBlueprint && SavedWalkAnimClass)
+				{
+					WalkMesh->SetAnimationMode(EAnimationMode::AnimationBlueprint);
+					WalkMesh->SetAnimInstanceClass(SavedWalkAnimClass);
+				}
+				else
+				{
+					WalkMesh->SetAnimationMode(SavedWalkAnimMode);
+				}
+			}
+			bUsingSingleNodeWalk = false;
+			WalkSingleNodeMesh = nullptr;
+			SavedWalkAnimClass = nullptr;
+		}
+
+		SavedAttackAnimMode = MeshComp->GetAnimationMode();
+		SavedAttackAnimClass = MeshComp->GetAnimClass();
+		AttackSingleNodeMesh = MeshComp;
+		bUsingAttackSingleNode = true;
+
+		MeshComp->PlayAnimation(AttackAnimation, false);
+
+		if (UAnimSingleNodeInstance* SingleNode = MeshComp->GetSingleNodeInstance())
+		{
+			SingleNode->SetPlayRate(AttackAnimPlayRate);
+			const float Duration = SingleNode->GetLength() / FMath::Max(AttackAnimPlayRate, KINDA_SMALL_NUMBER);
+			GetWorld()->GetTimerManager().ClearTimer(AttackAnimationTimer);
+			GetWorld()->GetTimerManager().SetTimer(AttackAnimationTimer, this, &AZombieCharacter::OnAttackAnimationFinished, Duration, false);
+		}
+		else
+		{
+			OnAttackAnimationFinished();
+		}
 	}
 
-	// Set attacking flag
-	bIsAttacking = true;
-
-	// Play attack montage
-	float MontageLength = AnimInstance->Montage_Play(AttackMontage);
-
-	if (MontageLength > 0.0f)
-	{
-		// Bind to montage end
-		FOnMontageEnded EndDelegate;
-		EndDelegate.BindUObject(this, &AZombieCharacter::OnAttackMontageEnded);
-		AnimInstance->Montage_SetEndDelegate(EndDelegate, AttackMontage);
-
-		// Apply damage (you could also use anim notifies for timing)
-		ApplyAttackDamage();
-		BP_OnAttack();
-	}
-	else
-	{
-		bIsAttacking = false;
-	}
+	// Apply damage (you could also use anim notifies for timing)
+	ApplyAttackDamage();
+	BP_OnAttack();
 }
 
 void AZombieCharacter::OnAttackMontageEnded(UAnimMontage* Montage, bool bInterrupted)
 {
+	bIsAttacking = false;
+}
+
+void AZombieCharacter::OnAttackAnimationFinished()
+{
+	GetWorld()->GetTimerManager().ClearTimer(AttackAnimationTimer);
+
+	if (bUsingAttackSingleNode)
+	{
+		if (USkeletalMeshComponent* AttackMesh = AttackSingleNodeMesh.Get())
+		{
+			AttackMesh->Stop();
+			if (SavedAttackAnimMode == EAnimationMode::AnimationBlueprint && SavedAttackAnimClass)
+			{
+				AttackMesh->SetAnimationMode(EAnimationMode::AnimationBlueprint);
+				AttackMesh->SetAnimInstanceClass(SavedAttackAnimClass);
+			}
+			else
+			{
+				AttackMesh->SetAnimationMode(SavedAttackAnimMode);
+			}
+		}
+		bUsingAttackSingleNode = false;
+		AttackSingleNodeMesh = nullptr;
+		SavedAttackAnimClass = nullptr;
+	}
+
 	bIsAttacking = false;
 }
 
@@ -214,6 +290,9 @@ void AZombieCharacter::Die()
 {
 	bIsDead = true;
 	bIsAttacking = false;
+
+	GetWorld()->GetTimerManager().ClearTimer(AttackAnimationTimer);
+	OnAttackAnimationFinished();
 
 	// Stop movement
 	GetCharacterMovement()->StopMovementImmediately();
