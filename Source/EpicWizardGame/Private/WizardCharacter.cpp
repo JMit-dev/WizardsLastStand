@@ -90,14 +90,11 @@ void AWizardCharacter::BeginPlay()
 	CurrentHP = MaxHP;
 	OnHealthChanged.Broadcast(CurrentHP, MaxHP);
 
-	// Attach staff to socket
-	if (StaffMesh && FirstPersonMesh)
-	{
-		StaffMesh->AttachToComponent(FirstPersonMesh, FAttachmentTransformRules::SnapToTargetNotIncludingScale, StaffSocketName);
-	}
-
 	// Lock to top-down when on specific levels
 	TryActivateTopDownView();
+
+	// Attach staff to socket (choose mesh that has the socket)
+	AttachStaffToHand();
 
 	// Add input mapping context
 	if (APlayerController* PlayerController = Cast<APlayerController>(Controller))
@@ -437,6 +434,7 @@ void AWizardCharacter::TryActivateTopDownView()
 		{
 			TopDownCamera->SetActive(false);
 		}
+		AttachStaffToHand();
 		return;
 	}
 
@@ -474,6 +472,9 @@ void AWizardCharacter::TryActivateTopDownView()
 	{
 		PC->SetViewTarget(this);
 	}
+
+	// Reattach staff to visible mesh for this view
+	AttachStaffToHand();
 }
 
 bool AWizardCharacter::ShouldUseTopDownCamera() const
@@ -486,6 +487,46 @@ bool AWizardCharacter::ShouldUseTopDownCamera() const
 	}
 
 	return false;
+}
+
+void AWizardCharacter::AttachStaffToHand()
+{
+	if (!StaffMesh)
+	{
+		return;
+	}
+
+	USkeletalMeshComponent* TargetMesh = nullptr;
+
+	// Pick mesh based on current view so the staff follows the animated mesh
+	if (bIsTopDownViewActive && GetMesh() && GetMesh()->DoesSocketExist(StaffSocketName))
+	{
+		TargetMesh = GetMesh();
+	}
+	else if (FirstPersonMesh && FirstPersonMesh->DoesSocketExist(StaffSocketName))
+	{
+		TargetMesh = FirstPersonMesh;
+	}
+	else if (GetMesh() && GetMesh()->DoesSocketExist(StaffSocketName))
+	{
+		TargetMesh = GetMesh();
+	}
+
+	if (!TargetMesh)
+	{
+		UE_LOG(LogTemp, Warning, TEXT("WizardCharacter: No socket '%s' found on meshes for staff attachment"), *StaffSocketName.ToString());
+		return;
+	}
+
+	if (StaffMeshAsset)
+	{
+		StaffMesh->SetStaticMesh(StaffMeshAsset);
+	}
+
+	StaffMesh->AttachToComponent(TargetMesh, FAttachmentTransformRules::SnapToTargetNotIncludingScale, StaffSocketName);
+	StaffMesh->SetRelativeLocation(StaffRelativeLocation);
+	StaffMesh->SetRelativeRotation(StaffRelativeRotation);
+	StaffMesh->SetRelativeScale3D(StaffRelativeScale);
 }
 
 void AWizardCharacter::Die()

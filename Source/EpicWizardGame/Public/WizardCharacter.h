@@ -13,6 +13,7 @@ class UAnimMontage;
 class UAnimSequenceBase;
 class UAnimInstance;
 class USkeletalMeshComponent;
+class UStaticMesh;
 class USpringArmComponent;
 
 DECLARE_DYNAMIC_MULTICAST_DELEGATE_TwoParams(FWizardHealthChangedSignature, float, CurrentHP, float, MaxHP);
@@ -45,6 +46,22 @@ class EPICWIZARDGAME_API AWizardCharacter : public ACharacter
 	/** Staff mesh attached to right hand */
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category="Components", meta=(AllowPrivateAccess="true"))
 	UStaticMeshComponent* StaffMesh;
+
+	/** Asset to assign to the staff mesh component */
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Staff", meta=(AllowPrivateAccess="true"))
+	UStaticMesh* StaffMeshAsset;
+
+	/** Local offset for positioning the staff on the hand socket */
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Staff", meta=(AllowPrivateAccess="true"))
+	FVector StaffRelativeLocation = FVector::ZeroVector;
+
+	/** Local rotation for positioning the staff on the hand socket */
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Staff", meta=(AllowPrivateAccess="true"))
+	FRotator StaffRelativeRotation = FRotator::ZeroRotator;
+
+	/** Local scale for the staff mesh */
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Staff", meta=(AllowPrivateAccess="true"))
+	FVector StaffRelativeScale = FVector(1.0f, 1.0f, 1.0f);
 
 protected:
 
@@ -219,6 +236,8 @@ protected:
 
 	/** Returns true if the current map should use the top-down camera */
 	bool ShouldUseTopDownCamera() const;
+
+	void AttachStaffToHand();
 
 	/** Blueprint event for spell cast effects */
 	UFUNCTION(BlueprintImplementableEvent, Category="Wizard", meta=(DisplayName="On Spell Cast"))
