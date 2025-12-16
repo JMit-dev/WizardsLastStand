@@ -20,12 +20,12 @@ void AZombieSpawnManager::BeginPlay()
 {
 	Super::BeginPlay();
 
-	// Check if we're in the title screen - if so, don't start spawning
+	// Check if we're in a menu screen - if so, don't start spawning
 	FString CurrentLevelName = GetWorld()->GetMapName();
 	CurrentLevelName.RemoveFromStart(GetWorld()->StreamingLevelsPrefix);
-	if (CurrentLevelName.Contains(TEXT("TitleScreen")))
+	if (CurrentLevelName.Contains(TEXT("TitleScreen")) || CurrentLevelName.Contains(TEXT("DeathScreen")))
 	{
-		UE_LOG(LogTemp, Log, TEXT("ZombieSpawnManager: In TitleScreen level, spawning disabled"));
+		UE_LOG(LogTemp, Log, TEXT("ZombieSpawnManager: In TitleScreen/DeathScreen level, spawning disabled"));
 		return;
 	}
 

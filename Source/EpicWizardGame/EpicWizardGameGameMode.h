@@ -16,7 +16,9 @@ class AEpicWizardGameGameMode : public AGameModeBase
 
 public:
 	AEpicWizardGameGameMode();
-};
 
+protected:
+	virtual void StartPlay() override;
+};
 
 

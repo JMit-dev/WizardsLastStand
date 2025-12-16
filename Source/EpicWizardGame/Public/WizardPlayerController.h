@@ -7,6 +7,7 @@
 #include "WizardPlayerController.generated.h"
 
 class UHotbarWidget;
+class UDeathScreenWidget;
 
 /**
  * Player controller for the Wizard character
@@ -35,4 +36,8 @@ protected:
 	/** Reference to the hotbar widget */
 	UPROPERTY()
 	UHotbarWidget* HotbarWidget;
+
+	/** Reference to the death screen widget (only used on the DeathScreen level) */
+	UPROPERTY()
+	UDeathScreenWidget* DeathScreenWidget;
 };

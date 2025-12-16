@@ -538,11 +538,11 @@ void AWizardCharacter::Die()
 	OnCastAnimationFinished();
 	BP_OnDeath();
 
-	// Return to title screen after a short delay
-	FTimerHandle ReturnToTitleTimer;
-	GetWorld()->GetTimerManager().SetTimer(ReturnToTitleTimer, [this]()
+	// Show death screen after a short delay (mirrors title screen flow)
+	FTimerHandle ReturnToDeathScreenTimer;
+	GetWorld()->GetTimerManager().SetTimer(ReturnToDeathScreenTimer, [this]()
 	{
-		UGameplayStatics::OpenLevel(this, FName("TitleScreen"));
+		UGameplayStatics::OpenLevel(this, FName("DeathScreen"));
 	}, 2.0f, false);
 }
 

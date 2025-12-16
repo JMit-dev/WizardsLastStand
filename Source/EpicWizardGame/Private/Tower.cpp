@@ -37,10 +37,10 @@ void ATower::BeginPlay()
 {
 	Super::BeginPlay();
 
-	// Check if we're in the title screen - if so, hide health bar
+	// Check if we're in a menu screen - if so, hide health bar
 	FString CurrentLevelName = GetWorld()->GetMapName();
 	CurrentLevelName.RemoveFromStart(GetWorld()->StreamingLevelsPrefix);
-	if (CurrentLevelName.Contains(TEXT("TitleScreen")))
+	if (CurrentLevelName.Contains(TEXT("TitleScreen")) || CurrentLevelName.Contains(TEXT("DeathScreen")))
 	{
 		if (HealthBarWidget)
 		{
@@ -92,11 +92,11 @@ void ATower::DestroyTower()
 	// Call blueprint event
 	BP_OnTowerDestroyed();
 
-	// Return to title screen after a short delay
-	FTimerHandle ReturnToTitleTimer;
-	GetWorld()->GetTimerManager().SetTimer(ReturnToTitleTimer, [this]()
+	// Show death screen after a short delay (same cadence as player death)
+	FTimerHandle ReturnToDeathScreenTimer;
+	GetWorld()->GetTimerManager().SetTimer(ReturnToDeathScreenTimer, [this]()
 	{
-		UGameplayStatics::OpenLevel(this, FName("TitleScreen"));
+		UGameplayStatics::OpenLevel(this, FName("DeathScreen"));
 	}, 2.0f, false);
 }
 
