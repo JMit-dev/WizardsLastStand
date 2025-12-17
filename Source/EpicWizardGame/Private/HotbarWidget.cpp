@@ -405,6 +405,13 @@ void UHotbarWidget::PlaceTurret(int32 SlotIndex, const FVector& Location)
 		return;
 	}
 
+	// Check if player can afford this turret
+	if (!CanAffordTurret(SlotIndex))
+	{
+		UE_LOG(LogTemp, Warning, TEXT("HotbarWidget: Cannot afford turret! Cost: $%d"), GetTurretCost(SlotIndex));
+		return;
+	}
+
 	// Find wave manager first (needed for multiple checks)
 	AWaveManager* WaveManager = nullptr;
 	for (TActorIterator<AWaveManager> It(GetWorld()); It; ++It)
@@ -423,13 +430,6 @@ void UHotbarWidget::PlaceTurret(int32 SlotIndex, const FVector& Location)
 	if (!WaveManager->IsInBuildMode())
 	{
 		UE_LOG(LogTemp, Warning, TEXT("HotbarWidget: Cannot place turrets during a wave! Wait for BUILD MODE"));
-		return;
-	}
-
-	// Check if player can afford this turret
-	if (!CanAffordTurret(SlotIndex))
-	{
-		UE_LOG(LogTemp, Warning, TEXT("HotbarWidget: Cannot afford turret! Cost: $%d"), GetTurretCost(SlotIndex));
 		return;
 	}
 

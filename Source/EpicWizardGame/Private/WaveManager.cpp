@@ -1,5 +1,6 @@
 // Fill out your copyright notice in the Description page of Project Settings.
 
+
 #include "WaveManager.h"
 #include "ZombieSpawnManager.h"
 #include "BuildModeTimerWidget.h"
@@ -51,10 +52,9 @@ void AWaveManager::BeginPlay()
 	// Find spawn manager
 	FindSpawnManager();
 
-	// Auto-start first wave if enabled (start wave 1 immediately, no build mode)
+	// Auto-start first wave if enabled
 	if (bAutoStartFirstWave && SpawnManager)
 	{
-		UE_LOG(LogTemp, Warning, TEXT("WaveManager: Starting Wave 1 immediately"));
 		StartNextWave();
 	}
 }
@@ -98,7 +98,7 @@ void AWaveManager::StartNextWave()
 	SpawnManager->StartSpawning();
 
 	float ZombieHP = CalculateZombieHealth(CurrentWave);
-	UE_LOG(LogTemp, Warning, TEXT("WaveManager: Round %d started! Zombies: %d | Zombie HP: %.0f | BUILD MODE ENDED"),
+	UE_LOG(LogTemp, Warning, TEXT("WaveManager: Round %d started! Zombies: %d | Zombie HP: %.0f"),
 		CurrentWave, TotalZombiesThisWave, ZombieHP);
 }
 
