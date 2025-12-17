@@ -9,7 +9,7 @@
 class ASpellProjectile;
 
 /**
- * Ice spell - cone-shaped freeze effect
+ * Ice spell - projectile that freezes/slows on hit
  */
 UCLASS()
 class EPICWIZARDGAME_API AIceSpell : public ASpellBase
@@ -20,14 +20,6 @@ public:
 
 	AIceSpell();
 
-	/** Cone range */
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Spell")
-	float ConeRange = 500.0f;
-
-	/** Cone angle in degrees */
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Spell")
-	float ConeAngle = 45.0f;
-
 	/** Freeze duration in seconds */
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Spell")
 	float FreezeDuration = 3.0f;
@@ -36,7 +28,7 @@ public:
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Spell")
 	float FreezeSpeedMultiplier = 0.2f;
 
-	/** Projectile class to spawn for the ice shard visual */
+	/** Projectile class to spawn (should be a SpellProjectile with freeze enabled) */
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Spell")
 	TSubclassOf<ASpellProjectile> ProjectileClass;
 

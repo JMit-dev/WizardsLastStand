@@ -27,7 +27,7 @@ protected:
 
 	/** Knockback force strength */
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Combat")
-	float KnockbackForce = 1000.0f;
+	float KnockbackForce = 2000.0f;
 
 	/** Projectile forward speed */
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Combat")

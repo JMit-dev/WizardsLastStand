@@ -9,7 +9,7 @@ ATurretAir::ATurretAir()
 {
 	// Mirror airblast spell pacing and damage
 	FireRate = 1.5f;
-	ProjectileDamage = 5.0f;
+	ProjectileDamage = 10.0f;
 	ProjectileVerticalOffset = 80.0f;
 	AirProjectileClass = AActor::StaticClass();
 }
@@ -79,12 +79,10 @@ void ATurretAir::ShootAtTarget(AZombieCharacter* Target)
 				FDamageEvent DamageEvent;
 				Zombie->TakeDamage(Damage, DamageEvent, WeakTurret->GetInstigatorController(), Projectile);
 
-				if (UCharacterMovementComponent* MovementComp = Zombie->GetCharacterMovement())
-				{
-					FVector KnockbackDirection = (Zombie->GetActorLocation() - Projectile->GetActorLocation()).GetSafeNormal();
-					KnockbackDirection.Z = 0.3f;
-					MovementComp->AddImpulse(KnockbackDirection * Knockback, true);
-				}
+				FVector KnockbackDirection = (Zombie->GetActorLocation() - Projectile->GetActorLocation()).GetSafeNormal();
+				KnockbackDirection.Z = 0.0f; // match Airblast: horizontal knockback only
+				KnockbackDirection.Normalize();
+				Zombie->LaunchCharacter(KnockbackDirection * Knockback, true, true);
 			}
 		}
 	});

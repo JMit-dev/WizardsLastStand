@@ -42,7 +42,7 @@ protected:
 
 	/** Time between waves (seconds) - BUILD MODE duration */
 	UPROPERTY(EditAnywhere, Category="Wave System")
-	float TimeBetweenWaves = 15.0f;
+	float TimeBetweenWaves = 10.0f;
 
 	/** Base zombie health for round 1 */
 	UPROPERTY(EditAnywhere, Category="Wave System|Health")

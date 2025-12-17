@@ -19,7 +19,7 @@ protected:
 
 	/** Cone range */
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Combat")
-	float ConeRange = 500.0f;
+	float ConeRange = 10000.0f;
 
 	/** Cone angle in degrees */
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Combat")

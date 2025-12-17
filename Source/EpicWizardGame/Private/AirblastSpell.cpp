@@ -16,7 +16,7 @@ AAirblastSpell::AAirblastSpell()
 	SpellName = "Airblast";
 	// Medium damage with strong horizontal knockback
 	// ~5-6 hits to kill round 1, main purpose is crowd control
-	BaseDamage = 25.0f;
+	BaseDamage = 10.0f;
 	Cooldown = 1.5f;
 	ProjectileClass = AActor::StaticClass();
 }
@@ -115,11 +115,8 @@ void AAirblastSpell::Execute(AWizardCharacter* Caster)
 				KnockbackDirection.Z = 0.0f; // Remove vertical component for pure horizontal push
 				KnockbackDirection.Normalize();
 
-				UCharacterMovementComponent* MovementComp = Zombie->GetCharacterMovement();
-				if (MovementComp)
-				{
-					MovementComp->AddImpulse(KnockbackDirection * KnockbackForce, true);
-				}
+				// Use LaunchCharacter so AI velocity is overridden for a noticeable shove
+				Zombie->LaunchCharacter(KnockbackDirection * KnockbackForce, true, true);
 			}
 		}
 	});

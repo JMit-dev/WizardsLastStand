@@ -15,7 +15,7 @@ ALightningSpell::ALightningSpell()
 	SpellName = "Lightning Strike";
 	// High damage AOE spell with slow recovery
 	// ~2-3 hits to kill round 1, plus AOE damage to nearby zombies
-	BaseDamage = 75.0f;
+	BaseDamage = 200.0f;
 	Cooldown = 4.0f; // Slow recovery time
 }
 

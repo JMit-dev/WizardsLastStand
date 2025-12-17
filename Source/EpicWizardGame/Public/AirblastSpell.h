@@ -24,7 +24,7 @@ public:
 
 	/** Knockback force strength */
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Spell")
-	float KnockbackForce = 1000.0f;
+	float KnockbackForce = 2000.0f;
 
 	/** Projectile class to spawn for the airblast */
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Spell")

@@ -63,6 +63,12 @@ AWizardCharacter::AWizardCharacter()
 	// Hide the default third person mesh in first person
 	GetMesh()->SetOwnerNoSee(true);
 
+	// Base movement speed for the wizard
+	if (UCharacterMovementComponent* Movement = GetCharacterMovement())
+	{
+		Movement->MaxWalkSpeed = 1000.0f;
+	}
+
 	// Default to wizard cast animation sequence
 	static ConstructorHelpers::FObjectFinder<UAnimSequenceBase> WizardCastAsset(TEXT("/Game/WizardsLastStand/Assets/Characters/WizardCastSpell.WizardCastSpell"));
 	if (WizardCastAsset.Succeeded())
