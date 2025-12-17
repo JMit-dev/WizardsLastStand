@@ -34,10 +34,29 @@ void UHotbarWidget::NativeTick(const FGeometry& MyGeometry, float InDeltaTime)
 {
 	Super::NativeTick(MyGeometry, InDeltaTime);
 
-	// Update preview turret if in turret mode and not on slot 4
+	// Update preview turret if in turret mode, not on slot 4, AND in build mode
 	if (CurrentMode == EHotbarMode::Turrets && CurrentSlotIndex != 4)
 	{
-		UpdatePreviewTurret();
+		// Check if we're in build mode
+		AWaveManager* WaveManager = nullptr;
+		for (TActorIterator<AWaveManager> It(GetWorld()); It; ++It)
+		{
+			WaveManager = *It;
+			break;
+		}
+
+		if (WaveManager && WaveManager->IsInBuildMode())
+		{
+			UpdatePreviewTurret();
+		}
+		else
+		{
+			// Hide preview when not in build mode
+			if (PreviewTurret)
+			{
+				PreviewTurret->SetActorHiddenInGame(true);
+			}
+		}
 	}
 	else
 	{
@@ -386,14 +405,7 @@ void UHotbarWidget::PlaceTurret(int32 SlotIndex, const FVector& Location)
 		return;
 	}
 
-	// Check if player can afford this turret
-	if (!CanAffordTurret(SlotIndex))
-	{
-		UE_LOG(LogTemp, Warning, TEXT("HotbarWidget: Cannot afford turret! Cost: $%d"), GetTurretCost(SlotIndex));
-		return;
-	}
-
-	// Find wave manager and spend money
+	// Find wave manager first (needed for multiple checks)
 	AWaveManager* WaveManager = nullptr;
 	for (TActorIterator<AWaveManager> It(GetWorld()); It; ++It)
 	{
@@ -404,6 +416,20 @@ void UHotbarWidget::PlaceTurret(int32 SlotIndex, const FVector& Location)
 	if (!WaveManager)
 	{
 		UE_LOG(LogTemp, Warning, TEXT("HotbarWidget: No wave manager found!"));
+		return;
+	}
+
+	// MUST be in build mode to place turrets
+	if (!WaveManager->IsInBuildMode())
+	{
+		UE_LOG(LogTemp, Warning, TEXT("HotbarWidget: Cannot place turrets during a wave! Wait for BUILD MODE"));
+		return;
+	}
+
+	// Check if player can afford this turret
+	if (!CanAffordTurret(SlotIndex))
+	{
+		UE_LOG(LogTemp, Warning, TEXT("HotbarWidget: Cannot afford turret! Cost: $%d"), GetTurretCost(SlotIndex));
 		return;
 	}
 
