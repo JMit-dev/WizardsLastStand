@@ -136,6 +136,14 @@ public:
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Hotbar|Preview")
 	float PreviewOpacity = 0.5f;
 
+	/** Use mouse cursor raycast (instead of camera center) for turret placement */
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Hotbar|Turrets")
+	bool bUseCursorForTurretPlacement = true;
+
+	/** Trace distance for turret placement raycasts */
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Hotbar|Turrets")
+	float TurretPlacementTraceDistance = 5000.0f;
+
 	/** Select next hotbar slot (scroll down) */
 	UFUNCTION(BlueprintCallable, Category="Hotbar")
 	void SelectNextSlot();
@@ -231,6 +239,9 @@ protected:
 
 	/** Destroy preview turret */
 	void DestroyPreviewTurret();
+
+	/** Raycast to find a valid turret placement location */
+	bool GetTurretPlacementHit(FHitResult& OutHitResult) const;
 
 private:
 

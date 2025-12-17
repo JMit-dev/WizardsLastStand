@@ -167,38 +167,8 @@ void UHotbarWidget::UseCurrentSlot()
 	// Handle turret mode
 	else if (CurrentMode == EHotbarMode::Turrets)
 	{
-		// Get the wizard character
-		AWizardPlayerController* PC = Cast<AWizardPlayerController>(GetOwningPlayer());
-		if (!PC)
-		{
-			return;
-		}
-
-		APawn* Pawn = PC->GetPawn();
-		AWizardCharacter* Wizard = Cast<AWizardCharacter>(Pawn);
-		if (!Wizard)
-		{
-			return;
-		}
-
-		// Perform raycast from camera to find placement location
-		FVector CameraLocation;
-		FRotator CameraRotation;
-		PC->GetPlayerViewPoint(CameraLocation, CameraRotation);
-
-		FVector TraceEnd = CameraLocation + (CameraRotation.Vector() * 5000.0f);
-
 		FHitResult HitResult;
-		FCollisionQueryParams QueryParams;
-		QueryParams.AddIgnoredActor(Wizard);
-
-		bool bHit = GetWorld()->LineTraceSingleByChannel(
-			HitResult,
-			CameraLocation,
-			TraceEnd,
-			ECC_Visibility,
-			QueryParams
-		);
+		bool bHit = GetTurretPlacementHit(HitResult);
 
 		if (bHit)
 		{
@@ -238,38 +208,8 @@ void UHotbarWidget::UseSlot(int32 SlotIndex)
 	// Handle turret mode (slots 0-3)
 	else if (CurrentMode == EHotbarMode::Turrets)
 	{
-		// Get the wizard character
-		AWizardPlayerController* PC = Cast<AWizardPlayerController>(GetOwningPlayer());
-		if (!PC)
-		{
-			return;
-		}
-
-		APawn* Pawn = PC->GetPawn();
-		AWizardCharacter* Wizard = Cast<AWizardCharacter>(Pawn);
-		if (!Wizard)
-		{
-			return;
-		}
-
-		// Perform raycast from camera to find placement location
-		FVector CameraLocation;
-		FRotator CameraRotation;
-		PC->GetPlayerViewPoint(CameraLocation, CameraRotation);
-
-		FVector TraceEnd = CameraLocation + (CameraRotation.Vector() * 5000.0f);
-
 		FHitResult HitResult;
-		FCollisionQueryParams QueryParams;
-		QueryParams.AddIgnoredActor(Wizard);
-
-		bool bHit = GetWorld()->LineTraceSingleByChannel(
-			HitResult,
-			CameraLocation,
-			TraceEnd,
-			ECC_Visibility,
-			QueryParams
-		);
+		bool bHit = GetTurretPlacementHit(HitResult);
 
 		if (bHit)
 		{
@@ -482,44 +422,64 @@ UImage* UHotbarWidget::GetSlotImage(int32 SlotIndex) const
 	}
 }
 
-void UHotbarWidget::UpdatePreviewTurret()
+bool UHotbarWidget::GetTurretPlacementHit(FHitResult& OutHitResult) const
 {
-	// Get the wizard player controller
+	if (!GetWorld())
+	{
+		return false;
+	}
+
 	AWizardPlayerController* PC = Cast<AWizardPlayerController>(GetOwningPlayer());
 	if (!PC)
 	{
-		return;
+		return false;
 	}
 
-	APawn* Pawn = PC->GetPawn();
-	AWizardCharacter* Wizard = Cast<AWizardCharacter>(Pawn);
-	if (!Wizard)
-	{
-		return;
-	}
-
-	// Perform raycast from camera to find placement location
-	FVector CameraLocation;
-	FRotator CameraRotation;
-	PC->GetPlayerViewPoint(CameraLocation, CameraRotation);
-
-	FVector TraceEnd = CameraLocation + (CameraRotation.Vector() * 5000.0f);
-
-	FHitResult HitResult;
 	FCollisionQueryParams QueryParams;
-	QueryParams.AddIgnoredActor(Wizard);
+	if (APawn* Pawn = PC->GetPawn())
+	{
+		QueryParams.AddIgnoredActor(Pawn);
+	}
 	if (PreviewTurret)
 	{
 		QueryParams.AddIgnoredActor(PreviewTurret);
 	}
 
-	bool bHit = GetWorld()->LineTraceSingleByChannel(
-		HitResult,
-		CameraLocation,
-		TraceEnd,
-		ECC_Visibility,
-		QueryParams
-	);
+	const float TraceDistance = TurretPlacementTraceDistance;
+
+	// Prefer cursor raycast (top-down / mouse-driven placement)
+	if (bUseCursorForTurretPlacement)
+	{
+		float MouseX = 0.0f;
+		float MouseY = 0.0f;
+		if (PC->GetMousePosition(MouseX, MouseY))
+		{
+			FVector WorldOrigin;
+			FVector WorldDirection;
+			if (PC->DeprojectMousePositionToWorld(WorldOrigin, WorldDirection))
+			{
+				const FVector TraceEnd = WorldOrigin + (WorldDirection * TraceDistance);
+				if (GetWorld()->LineTraceSingleByChannel(OutHitResult, WorldOrigin, TraceEnd, ECC_Visibility, QueryParams))
+				{
+					return true;
+				}
+			}
+		}
+	}
+
+	// Fallback: camera center raycast (works even when cursor is hidden/captured)
+	FVector CameraLocation;
+	FRotator CameraRotation;
+	PC->GetPlayerViewPoint(CameraLocation, CameraRotation);
+
+	const FVector TraceEnd = CameraLocation + (CameraRotation.Vector() * TraceDistance);
+	return GetWorld()->LineTraceSingleByChannel(OutHitResult, CameraLocation, TraceEnd, ECC_Visibility, QueryParams);
+}
+
+void UHotbarWidget::UpdatePreviewTurret()
+{
+	FHitResult HitResult;
+	bool bHit = GetTurretPlacementHit(HitResult);
 
 	if (bHit)
 	{
