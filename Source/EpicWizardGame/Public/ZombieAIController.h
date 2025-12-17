@@ -21,7 +21,7 @@ protected:
 
 	/** Distance at which zombie will attack */
 	UPROPERTY(EditAnywhere, Category="AI")
-	float AttackDistance = 150.0f;
+	float AttackDistance = 200.0f;
 
 	/** How often to update AI (seconds) */
 	UPROPERTY(EditAnywhere, Category="AI")

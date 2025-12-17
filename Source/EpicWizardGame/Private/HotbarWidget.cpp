@@ -568,6 +568,8 @@ void UHotbarWidget::SpawnPreviewTurret()
 
 	if (PreviewTurret)
 	{
+		PreviewTurret->SetIsPreviewTurret(true);
+
 		// Disable collision and tick on preview
 		PreviewTurret->SetActorEnableCollision(false);
 		PreviewTurret->SetActorTickEnabled(false);

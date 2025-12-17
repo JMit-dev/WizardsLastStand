@@ -5,6 +5,12 @@
 #include "ZombieCharacter.h"
 #include "SpellProjectile.h"
 #include "Kismet/GameplayStatics.h"
+#include "Components/BoxComponent.h"
+#include "Components/SceneComponent.h"
+#include "Components/WidgetComponent.h"
+#include "Blueprint/UserWidget.h"
+#include "UObject/ConstructorHelpers.h"
+#include "UObject/UnrealType.h"
 
 // Sets default values
 ATurret::ATurret()
@@ -12,12 +18,76 @@ ATurret::ATurret()
  	// Set this pawn to call Tick() every frame.  You can turn this off to improve performance if you don't need it.
 	PrimaryActorTick.bCanEverTick = true;
 
+	SetCanBeDamaged(true);
+
+	// Stable root for C++ + BP components
+	SceneRoot = CreateDefaultSubobject<USceneComponent>(TEXT("Root"));
+	RootComponent = SceneRoot;
+
+	// Create collision box for zombie attacks (overlap only)
+	AttackCollision = CreateDefaultSubobject<UBoxComponent>(TEXT("AttackCollision"));
+	AttackCollision->SetupAttachment(RootComponent);
+	AttackCollision->SetBoxExtent(FVector(120.0f, 120.0f, 120.0f));
+	AttackCollision->SetCollisionEnabled(ECollisionEnabled::QueryOnly);
+	AttackCollision->SetCollisionResponseToAllChannels(ECollisionResponse::ECR_Ignore);
+	AttackCollision->SetCollisionResponseToChannel(ECollisionChannel::ECC_Pawn, ECollisionResponse::ECR_Overlap);
+
+	// Create floating health bar widget (same as zombies/tower)
+	HealthBarWidget = CreateDefaultSubobject<UWidgetComponent>(TEXT("HealthBarWidget"));
+	HealthBarWidget->SetupAttachment(RootComponent);
+	HealthBarWidget->SetRelativeLocation(FVector(0.0f, 0.0f, 120.0f));
+	HealthBarWidget->SetWidgetSpace(EWidgetSpace::Screen);
+	HealthBarWidget->SetDrawSize(FVector2D(200.0f, 20.0f));
+
+	// Default to the shared floating health bar widget blueprint
+	static ConstructorHelpers::FClassFinder<UUserWidget> HealthBarWidgetBP(TEXT("/Game/WizardsLastStand/UI/WBP_FloatingHealthBar"));
+	if (HealthBarWidgetBP.Succeeded())
+	{
+		HealthBarWidget->SetWidgetClass(HealthBarWidgetBP.Class);
+	}
 }
 
 // Called when the game starts or when spawned
 void ATurret::BeginPlay()
 {
 	Super::BeginPlay();
+
+	// Blueprint defaults can override "Can Be Damaged", so force it at runtime
+	SetCanBeDamaged(!bIsPreviewTurret);
+
+	// Ensure the widget exists and points at this turret (WBP_FloatingHealthBar expects an OwnerActor variable)
+	if (HealthBarWidget)
+	{
+		HealthBarWidget->InitWidget();
+		UE_LOG(LogTemp, Log, TEXT("Turret HealthBarWidget class: %s"), *GetNameSafe(HealthBarWidget->GetWidgetClass()));
+
+		if (UUserWidget* UserWidget = HealthBarWidget->GetUserWidgetObject())
+		{
+			if (FObjectPropertyBase* OwnerActorProp = FindFProperty<FObjectPropertyBase>(UserWidget->GetClass(), TEXT("OwnerActor")))
+			{
+				if (OwnerActorProp->PropertyClass && OwnerActorProp->PropertyClass->IsChildOf(AActor::StaticClass()))
+				{
+					OwnerActorProp->SetObjectPropertyValue_InContainer(UserWidget, this);
+					UE_LOG(LogTemp, Log, TEXT("Turret health bar OwnerActor set to %s"), *GetName());
+				}
+			}
+		}
+	}
+
+	// Check if we're in a menu screen - if so, hide health bar
+	FString CurrentLevelName = GetWorld()->GetMapName();
+	CurrentLevelName.RemoveFromStart(GetWorld()->StreamingLevelsPrefix);
+	if (CurrentLevelName.Contains(TEXT("TitleScreen")) || CurrentLevelName.Contains(TEXT("DeathScreen")))
+	{
+		if (HealthBarWidget)
+		{
+			HealthBarWidget->SetVisibility(false);
+		}
+	}
+
+	// Initialize HP
+	CurrentHP = MaxHP;
+
 	FireTimer = FireRate;
 }
 
@@ -25,6 +95,11 @@ void ATurret::BeginPlay()
 void ATurret::Tick(float DeltaTime)
 {
 	Super::Tick(DeltaTime);
+
+	if (bIsDestroyed || bIsPreviewTurret)
+	{
+		return;
+	}
 
 	// Find nearest zombie
 	AZombieCharacter* NearestZombie = FindNearestZombie();
@@ -54,6 +129,47 @@ void ATurret::SetupPlayerInputComponent(UInputComponent* PlayerInputComponent)
 {
 	Super::SetupPlayerInputComponent(PlayerInputComponent);
 
+}
+
+float ATurret::TakeDamage(float Damage, FDamageEvent const& DamageEvent, AController* EventInstigator, AActor* DamageCauser)
+{
+	Super::TakeDamage(Damage, DamageEvent, EventInstigator, DamageCauser);
+
+	if (bIsDestroyed || bIsPreviewTurret)
+	{
+		return 0.0f;
+	}
+
+	const float AppliedDamage = FMath::Max(0.0f, Damage);
+	if (AppliedDamage <= 0.0f)
+	{
+		return 0.0f;
+	}
+
+	CurrentHP -= AppliedDamage;
+
+	UE_LOG(LogTemp, Warning, TEXT("Turret took %f damage! Current HP: %f / %f"), AppliedDamage, CurrentHP, MaxHP);
+
+	BP_OnTurretDamaged(AppliedDamage, CurrentHP);
+
+	if (CurrentHP <= 0.0f)
+	{
+		DestroyTurret();
+	}
+
+	return AppliedDamage;
+}
+
+void ATurret::SetIsPreviewTurret(bool bIsPreview)
+{
+	bIsPreviewTurret = bIsPreview;
+
+	SetCanBeDamaged(!bIsPreviewTurret);
+
+	if (HealthBarWidget)
+	{
+		HealthBarWidget->SetVisibility(!bIsPreviewTurret);
+	}
 }
 
 AZombieCharacter* ATurret::FindNearestZombie()
@@ -116,3 +232,24 @@ void ATurret::ShootAtTarget(AZombieCharacter* Target)
 	}
 }
 
+void ATurret::DestroyTurret()
+{
+	if (bIsDestroyed)
+	{
+		return;
+	}
+
+	bIsDestroyed = true;
+	CurrentHP = 0.0f;
+
+	if (HealthBarWidget)
+	{
+		HealthBarWidget->SetVisibility(false);
+	}
+
+	BP_OnTurretDestroyed();
+
+	SetActorEnableCollision(false);
+	SetActorHiddenInGame(true);
+	Destroy();
+}

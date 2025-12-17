@@ -2,6 +2,7 @@
 
 #include "ZombieCharacter.h"
 #include "Tower.h"
+#include "Turret.h"
 #include "Animation/AnimInstance.h"
 #include "Animation/AnimMontage.h"
 #include "Animation/AnimSequenceBase.h"
@@ -248,6 +249,13 @@ void AZombieCharacter::ApplyAttackDamage()
 		}
 	}
 
+	// Collect overlaps once (towers/turrets may be tall or have complex collision)
+	TArray<AActor*> OverlappingTowers;
+	GetOverlappingActors(OverlappingTowers, ATower::StaticClass());
+
+	TArray<AActor*> OverlappingTurrets;
+	GetOverlappingActors(OverlappingTurrets, ATurret::StaticClass());
+
 	// Check all towers using collision overlap instead of distance
 	// This allows zombies to damage vertically stretched towers
 	for (TActorIterator<ATower> It(GetWorld()); It; ++It)
@@ -255,13 +263,7 @@ void AZombieCharacter::ApplyAttackDamage()
 		ATower* Tower = *It;
 		if (Tower && !Tower->IsDestroyed())
 		{
-			// Check if zombie's capsule is overlapping with the tower's attack collision
-			TArray<AActor*> OverlappingActors;
-			GetOverlappingActors(OverlappingActors, ATower::StaticClass());
-
-			bool bIsOverlapping = OverlappingActors.Contains(Tower);
-
-			if (bIsOverlapping)
+			if (OverlappingTowers.Contains(Tower))
 			{
 				// Prioritize tower if we're overlapping with it
 				float TowerDistance = FVector::Dist(ZombieLocation, Tower->GetActorLocation());
@@ -274,6 +276,23 @@ void AZombieCharacter::ApplyAttackDamage()
 		}
 	}
 
+	// Check turrets (prefer overlaps; also allow close-range distance attacks)
+	for (TActorIterator<ATurret> It(GetWorld()); It; ++It)
+	{
+		ATurret* Turret = *It;
+		if (Turret && !Turret->IsDestroyed() && !Turret->IsPreviewTurret())
+		{
+			const float TurretDistance = FVector::Dist(ZombieLocation, Turret->GetActorLocation());
+			const bool bCanHitTurret = OverlappingTurrets.Contains(Turret) || (TurretDistance <= AttackRange);
+
+			if (bCanHitTurret && TurretDistance < NearestDistance)
+			{
+				NearestDistance = TurretDistance;
+				NearestTarget = Turret;
+			}
+		}
+	}
+
 	// Apply damage to nearest target in range
 	if (NearestTarget)
 	{
@@ -282,6 +301,10 @@ void AZombieCharacter::ApplyAttackDamage()
 		if (TargetTower)
 		{
 			UE_LOG(LogTemp, Error, TEXT("Zombie attacking TOWER %s for %f damage at distance %f"), *NearestTarget->GetName(), AttackDamage, NearestDistance);
+		}
+		else if (Cast<ATurret>(NearestTarget))
+		{
+			UE_LOG(LogTemp, Warning, TEXT("Zombie attacking TURRET %s for %f damage at distance %f"), *NearestTarget->GetName(), AttackDamage, NearestDistance);
 		}
 		else
 		{

@@ -65,7 +65,7 @@ protected:
 
 	/** Range for attack to hit */
 	UPROPERTY(EditAnywhere, Category="Combat")
-	float AttackRange = 150.0f;
+	float AttackRange = 200.0f;
 
 	/** Range for attacking towers (can be larger since towers are bigger) */
 	UPROPERTY(EditAnywhere, Category="Combat")

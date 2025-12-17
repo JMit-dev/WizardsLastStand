@@ -3,6 +3,7 @@
 #include "ZombieAIController.h"
 #include "ZombieCharacter.h"
 #include "Tower.h"
+#include "Turret.h"
 #include "Kismet/GameplayStatics.h"
 #include "Engine/World.h"
 #include "TimerManager.h"
@@ -132,6 +133,43 @@ void AZombieAIController::UpdateAI()
 		}
 	}
 
+	// Check all turrets - zombies can target and destroy them
+	for (TActorIterator<ATurret> It(GetWorld()); It; ++It)
+	{
+		ATurret* Turret = *It;
+		if (Turret && !Turret->IsDestroyed() && !Turret->IsPreviewTurret())
+		{
+			// Get PATH distance to turret
+			float PathDistance = -1.0f;
+			if (UPathFollowingComponent* PathComp = GetPathFollowingComponent())
+			{
+				UNavigationSystemV1* NavSys = UNavigationSystemV1::GetCurrent(GetWorld());
+				if (NavSys)
+				{
+					FPathFindingQuery PathQuery(this, *NavSys->GetDefaultNavDataInstance(), ZombieLocation, Turret->GetActorLocation());
+					FPathFindingResult Result = NavSys->FindPathSync(PathQuery);
+
+					if (Result.IsSuccessful() && Result.Path.IsValid())
+					{
+						PathDistance = Result.Path->GetLength();
+					}
+				}
+			}
+
+			// If we can path to turret, score it
+			if (PathDistance > 0.0f)
+			{
+				// Slightly lower than towers so core objectives still matter
+				float Score = 1500.0f / (PathDistance + 1.0f);
+				if (Score > BestTargetScore)
+				{
+					BestTargetScore = Score;
+					BestTarget = Turret;
+				}
+			}
+		}
+	}
+
 	// Fallback: if no pathable target, just use nearest by straight distance
 	if (!BestTarget)
 	{
@@ -160,6 +198,20 @@ void AZombieAIController::UpdateAI()
 				}
 			}
 		}
+
+		for (TActorIterator<ATurret> It(GetWorld()); It; ++It)
+		{
+			ATurret* Turret = *It;
+			if (Turret && !Turret->IsDestroyed() && !Turret->IsPreviewTurret())
+			{
+				float TurretDistance = FVector::Dist(ZombieLocation, Turret->GetActorLocation());
+				if (TurretDistance < NearestDistance)
+				{
+					NearestDistance = TurretDistance;
+					BestTarget = Turret;
+				}
+			}
+		}
 	}
 
 	// If no valid target found, do nothing
@@ -172,6 +224,7 @@ void AZombieAIController::UpdateAI()
 	float DistanceToTarget = FVector::Dist(ZombieLocation, BestTarget->GetActorLocation());
 	bool bInAttackRange = false;
 	ATower* TargetTower = Cast<ATower>(BestTarget);
+	ATurret* TargetTurret = Cast<ATurret>(BestTarget);
 
 	if (TargetTower)
 	{
@@ -182,6 +235,16 @@ void AZombieAIController::UpdateAI()
 
 		// In range if either overlapping OR within distance
 		bInAttackRange = bIsOverlapping || (DistanceToTarget <= 300.0f);
+	}
+	else if (TargetTurret)
+	{
+		// For turrets, allow overlap-based range (origin distance can be misleading)
+		TArray<AActor*> OverlappingActors;
+		ZombieCharacter->GetOverlappingActors(OverlappingActors, ATurret::StaticClass());
+		const bool bIsOverlapping = OverlappingActors.Contains(TargetTurret);
+
+		// In range if either overlapping OR within distance
+		bInAttackRange = bIsOverlapping || (DistanceToTarget <= AttackDistance);
 	}
 	else
 	{
