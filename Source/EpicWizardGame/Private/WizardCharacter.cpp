@@ -66,7 +66,7 @@ AWizardCharacter::AWizardCharacter()
 	// Base movement speed for the wizard
 	if (UCharacterMovementComponent* Movement = GetCharacterMovement())
 	{
-		Movement->MaxWalkSpeed = 1000.0f;
+		Movement->MaxWalkSpeed = 1500.0f;
 	}
 
 	// Default to wizard cast animation sequence
