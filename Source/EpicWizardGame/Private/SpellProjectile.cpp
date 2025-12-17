@@ -67,7 +67,8 @@ void ASpellProjectile::InitializeProjectile(const FVector& Direction, float InDa
 		CollisionSphere->SetCollisionResponseToChannel(ECC_Pawn, ECR_Block);
 		CollisionSphere->SetCollisionResponseToChannel(ECC_WorldStatic, ECR_Block);
 		CollisionSphere->SetCollisionResponseToChannel(ECC_WorldDynamic, ECR_Block);
-		CollisionSphere->SetGenerateOverlapEvents(false);
+		// Also allow overlaps so we can still deal damage if block isn't triggered by collision settings
+		CollisionSphere->SetGenerateOverlapEvents(true);
 		CollisionSphere->SetNotifyRigidBodyCollision(true);
 	}
 }
@@ -143,11 +144,6 @@ void ASpellProjectile::OnHit(UPrimitiveComponent* HitComp, AActor* OtherActor, U
 
 void ASpellProjectile::OnOverlap(UPrimitiveComponent* OverlappedComp, AActor* OtherActor, UPrimitiveComponent* OtherComp, int32 OtherBodyIndex, bool bFromSweep, const FHitResult& SweepResult)
 {
-	if (!bPierceTargets)
-	{
-		return; // overlap path is for piercing projectiles
-	}
-
 	if (!OtherActor || OtherActor == GetOwner())
 	{
 		return;
@@ -155,19 +151,23 @@ void ASpellProjectile::OnOverlap(UPrimitiveComponent* OverlappedComp, AActor* Ot
 
 	if (AZombieCharacter* Zombie = Cast<AZombieCharacter>(OtherActor))
 	{
-		const bool bAlreadyHit = PiercedActors.ContainsByPredicate([Zombie](const TWeakObjectPtr<AActor>& Ptr)
+		// For piercing projectiles, avoid double hits
+		if (bPierceTargets)
 		{
-			return Ptr.Get() == Zombie;
-		});
+			const bool bAlreadyHit = PiercedActors.ContainsByPredicate([Zombie](const TWeakObjectPtr<AActor>& Ptr)
+			{
+				return Ptr.Get() == Zombie;
+			});
 
-		if (bAlreadyHit)
-		{
-			return;
+			if (bAlreadyHit)
+			{
+				return;
+			}
 		}
 
 		FDamageEvent DamageEvent;
 		Zombie->TakeDamage(Damage, DamageEvent, GetInstigatorController(), this);
-		UE_LOG(LogTemp, Log, TEXT("Piercing projectile overlapped zombie for %f damage"), Damage);
+		UE_LOG(LogTemp, Log, TEXT("Projectile overlapped zombie for %f damage"), Damage);
 
 		if (bApplyFreeze && FreezeDuration > 0.0f && FreezeSpeedMultiplier >= 0.0f)
 		{
@@ -188,9 +188,17 @@ void ASpellProjectile::OnOverlap(UPrimitiveComponent* OverlappedComp, AActor* Ot
 			}
 		}
 
-		// Prevent re-hitting the same target
-		CollisionSphere->IgnoreActorWhenMoving(Zombie, true);
-		PiercedActors.Add(Zombie);
+		if (bPierceTargets)
+		{
+			// Prevent re-hitting the same target
+			CollisionSphere->IgnoreActorWhenMoving(Zombie, true);
+			PiercedActors.Add(Zombie);
+		}
+		else
+		{
+			// Non-piercing: destroy on overlap after dealing damage
+			Destroy();
+		}
 	}
 }
 

@@ -4,8 +4,10 @@
 #include "Turret.h"
 #include "TurretIce.generated.h"
 
+class ASpellProjectile;
+
 /**
- * Ice turret - applies a freezing cone in front of the turret
+ * Ice turret - fires a freezing projectile like the wizard's Ice spell
  */
 UCLASS()
 class EPICWIZARDGAME_API ATurretIce : public ATurret
@@ -16,22 +18,14 @@ public:
 	ATurretIce();
 
 protected:
+	// Fire straight (flat) but with the ice projectile
+	virtual void ShootAtTarget(AZombieCharacter* Target) override;
 
-	/** Cone range */
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Combat")
-	float ConeRange = 10000.0f;
-
-	/** Cone angle in degrees */
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Combat")
-	float ConeAngle = 45.0f;
-
-	/** Freeze duration in seconds */
+	/** Freeze duration in seconds (matches Ice spell) */
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Combat")
 	float FreezeDuration = 3.0f;
 
-	/** Movement speed multiplier when frozen */
+	/** Movement speed multiplier when frozen (matches Ice spell) */
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Combat")
 	float FreezeSpeedMultiplier = 0.2f;
-
-	virtual void ShootAtTarget(AZombieCharacter* Target) override;
 };
