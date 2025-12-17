@@ -7,8 +7,8 @@
 
 ATurretLightning::ATurretLightning()
 {
-	FireRate = 3.0f;
-	ProjectileDamage = 50.0f;
+	FireRate = 4.0f;        // Match Lightning spell cooldown
+	ProjectileDamage = 600.0f; // Match Lightning spell base damage
 }
 
 void ATurretLightning::ShootAtTarget(AZombieCharacter* Target)

@@ -26,7 +26,7 @@ public:
 
 	/** AOE radius around strike point */
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Spell")
-	float AOERadius = 500.0f;
+	float AOERadius = 1000.0f;
 
 	/** AOE damage multiplier (AOE targets take BaseDamage * this) */
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Spell")

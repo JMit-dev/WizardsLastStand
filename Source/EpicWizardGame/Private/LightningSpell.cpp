@@ -15,16 +15,21 @@ ALightningSpell::ALightningSpell()
 	SpellName = "Lightning Strike";
 	// High damage AOE spell with slow recovery
 	// ~2-3 hits to kill round 1, plus AOE damage to nearby zombies
-	BaseDamage = 200.0f;
+	BaseDamage = 600.0f;
 	Cooldown = 4.0f; // Slow recovery time
 }
 
 void ALightningSpell::Execute(AWizardCharacter* Caster)
 {
-	Super::Execute(Caster);
-
 	if (!Caster)
 	{
+		return;
+	}
+
+	// Only go on cooldown when we actually hit a zombie
+	if (!CanCast())
+	{
+		UE_LOG(LogTemp, Warning, TEXT("Lightning: On cooldown (%.2fs remaining)"), GetCooldownRemaining());
 		return;
 	}
 
@@ -53,6 +58,7 @@ void ALightningSpell::Execute(AWizardCharacter* Caster)
 	if (!bHit)
 	{
 		UE_LOG(LogTemp, Warning, TEXT("Lightning: No target found"));
+		// No cooldown consumed on miss
 		return;
 	}
 
@@ -65,6 +71,10 @@ void ALightningSpell::Execute(AWizardCharacter* Caster)
 	}
 
 	FVector StrikeLocation = HitResult.Location;
+
+	// Mark ownership and start cooldown only after confirming a valid target
+	OwnerWizard = Caster;
+	StartCooldown();
 
 	// Deal damage to primary target
 	FDamageEvent DamageEvent;

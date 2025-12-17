@@ -19,7 +19,7 @@ protected:
 
 	/** AOE radius around the strike point */
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Combat")
-	float AOERadius = 300.0f;
+	float AOERadius = 1000.0f;
 
 	/** Multiplier applied to AOE damage */
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Combat")
