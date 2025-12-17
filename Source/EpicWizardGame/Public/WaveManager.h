@@ -7,6 +7,7 @@
 #include "WaveManager.generated.h"
 
 class AZombieSpawnManager;
+class UBuildModeTimerWidget;
 
 UCLASS()
 class EPICWIZARDGAME_API AWaveManager : public AActor
@@ -14,6 +15,14 @@ class EPICWIZARDGAME_API AWaveManager : public AActor
 	GENERATED_BODY()
 
 protected:
+
+	/** Build mode timer widget class */
+	UPROPERTY(EditAnywhere, Category="UI")
+	TSubclassOf<UBuildModeTimerWidget> BuildModeTimerWidgetClass;
+
+	/** Instance of the build mode timer widget */
+	UPROPERTY()
+	UBuildModeTimerWidget* BuildModeTimerWidget;
 
 	/** Current wave number */
 	UPROPERTY(BlueprintReadOnly, Category="Wave System")
@@ -31,9 +40,9 @@ protected:
 	UPROPERTY(EditAnywhere, Category="Wave System")
 	float ZombiesIncreaseMultiplier = 0.15f;
 
-	/** Time between waves (seconds) */
+	/** Time between waves (seconds) - BUILD MODE duration */
 	UPROPERTY(EditAnywhere, Category="Wave System")
-	float TimeBetweenWaves = 30.0f;
+	float TimeBetweenWaves = 15.0f;
 
 	/** Base zombie health for round 1 */
 	UPROPERTY(EditAnywhere, Category="Wave System|Health")
@@ -76,8 +85,14 @@ protected:
 	/** Is wave currently active */
 	bool bWaveActive = false;
 
+	/** Is currently in build mode (wave break period) */
+	bool bInBuildMode = false;
+
 	/** Timer for wave break period */
 	FTimerHandle WaveBreakTimer;
+
+	/** Time when build mode started */
+	float BuildModeStartTime = 0.0f;
 
 public:
 
@@ -117,6 +132,14 @@ public:
 	/** Is wave currently active */
 	UFUNCTION(BlueprintPure, Category="Wave System")
 	bool IsWaveActive() const { return bWaveActive; }
+
+	/** Is currently in build mode (can place turrets) */
+	UFUNCTION(BlueprintPure, Category="Wave System")
+	bool IsInBuildMode() const { return bInBuildMode; }
+
+	/** Get remaining time in build mode (seconds) */
+	UFUNCTION(BlueprintPure, Category="Wave System")
+	float GetBuildModeTimeRemaining() const;
 
 	/** Calculate zombie health for a given round */
 	UFUNCTION(BlueprintPure, Category="Wave System")

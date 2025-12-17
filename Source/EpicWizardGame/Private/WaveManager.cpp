@@ -3,9 +3,11 @@
 
 #include "WaveManager.h"
 #include "ZombieSpawnManager.h"
+#include "BuildModeTimerWidget.h"
 #include "EngineUtils.h"
 #include "TimerManager.h"
 #include "Kismet/GameplayStatics.h"
+#include "Blueprint/UserWidget.h"
 
 // Sets default values
 AWaveManager::AWaveManager()
@@ -31,6 +33,21 @@ void AWaveManager::BeginPlay()
 	// Initialize money
 	PlayerMoney = StartingMoney;
 	UE_LOG(LogTemp, Log, TEXT("WaveManager: Starting money: $%d"), PlayerMoney);
+
+	// Create and add build mode timer widget to viewport
+	if (BuildModeTimerWidgetClass)
+	{
+		APlayerController* PC = UGameplayStatics::GetPlayerController(this, 0);
+		if (PC)
+		{
+			BuildModeTimerWidget = CreateWidget<UBuildModeTimerWidget>(PC, BuildModeTimerWidgetClass);
+			if (BuildModeTimerWidget)
+			{
+				BuildModeTimerWidget->AddToViewport(100); // High Z-order to overlay on top
+				UE_LOG(LogTemp, Log, TEXT("WaveManager: Build mode timer widget created"));
+			}
+		}
+	}
 
 	// Find spawn manager
 	FindSpawnManager();
@@ -69,8 +86,9 @@ void AWaveManager::StartNextWave()
 	TotalZombiesThisWave = CalculateZombieCount(CurrentWave);
 	ZombiesKilledThisWave = 0;
 
-	// Set wave as active
+	// Set wave as active and end build mode
 	bWaveActive = true;
+	bInBuildMode = false;
 
 	// Update spawn manager with total zombies to spawn and health
 	SpawnManager->TotalZombiesToSpawn = TotalZombiesThisWave;
@@ -156,10 +174,30 @@ void AWaveManager::OnWaveComplete()
 
 void AWaveManager::StartWaveBreak()
 {
+	// Enter build mode
+	bInBuildMode = true;
+	BuildModeStartTime = GetWorld()->GetTimeSeconds();
+
+	// Recreate timer widget if it was destroyed
+	if (!BuildModeTimerWidget && BuildModeTimerWidgetClass)
+	{
+		UE_LOG(LogTemp, Error, TEXT("WaveManager: Timer widget was destroyed! Recreating..."));
+		APlayerController* PC = UGameplayStatics::GetPlayerController(this, 0);
+		if (PC)
+		{
+			BuildModeTimerWidget = CreateWidget<UBuildModeTimerWidget>(PC, BuildModeTimerWidgetClass);
+			if (BuildModeTimerWidget)
+			{
+				BuildModeTimerWidget->AddToViewport(100);
+				UE_LOG(LogTemp, Warning, TEXT("WaveManager: Recreated build mode timer widget"));
+			}
+		}
+	}
+
 	// Start timer for next wave
 	GetWorld()->GetTimerManager().SetTimer(WaveBreakTimer, this, &AWaveManager::StartNextWave, TimeBetweenWaves, false);
 
-	UE_LOG(LogTemp, Warning, TEXT("WaveManager: %.0f second break before Round %d"), TimeBetweenWaves, CurrentWave + 1);
+	UE_LOG(LogTemp, Warning, TEXT("WaveManager: BUILD MODE STARTED - %.0f seconds until Round %d"), TimeBetweenWaves, CurrentWave + 1);
 }
 
 float AWaveManager::CalculateZombieHealth(int32 RoundNumber) const
@@ -240,5 +278,19 @@ bool AWaveManager::SpendMoney(int32 Amount)
 
 	UE_LOG(LogTemp, Warning, TEXT("WaveManager: Not enough money! Need $%d, have $%d"), Amount, PlayerMoney);
 	return false;
+}
+
+float AWaveManager::GetBuildModeTimeRemaining() const
+{
+	if (!bInBuildMode)
+	{
+		return 0.0f;
+	}
+
+	float CurrentTime = GetWorld()->GetTimeSeconds();
+	float ElapsedTime = CurrentTime - BuildModeStartTime;
+	float RemainingTime = TimeBetweenWaves - ElapsedTime;
+
+	return FMath::Max(0.0f, RemainingTime);
 }
 
